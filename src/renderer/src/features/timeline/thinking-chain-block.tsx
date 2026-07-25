@@ -115,7 +115,7 @@ export function ThinkingChainBlock({
         <span
           className={cn(
             'timeline-activity-label',
-            isLive ? 'thinking-shimmer-ltr' : 'timeline-text-quiet',
+            isLive ? 'thinking-shimmer-ltr' : 'thinking-chain-label',
           )}
         >
           {label}
@@ -123,8 +123,9 @@ export function ThinkingChainBlock({
       </button>
       {!placeholder && body && open ? (
         <div
+          data-independent-scroll
           className={cn(
-            'max-h-40 overflow-auto border-l border-border/12 pl-2 text-[11px] leading-[1.5] timeline-text-placeholder whitespace-pre-wrap break-words font-mono',
+            'thinking-chain-body max-h-40 overflow-y-auto overscroll-contain border-l border-border/35 pl-2 text-[13px] leading-[1.6] whitespace-pre-wrap break-words',
             nested ? 'ml-3' : 'ml-3.5',
           )}
         >

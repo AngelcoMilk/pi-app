@@ -7,11 +7,9 @@ import { hydrateLanguageFromSettings } from './lib/i18n'
 import './lib/startup-toast-guard'
 import { ensureExtensionUIChannel } from './lib/extension-ui-channel'
 import { ensureAppUpdateNotify } from './lib/app-update-notify'
-import { syncChatContentMaxWidths } from './lib/chat-content-width'
 
 ensureExtensionUIChannel()
 ensureAppUpdateNotify()
-syncChatContentMaxWidths()
 
 const App = React.lazy(() => import('./app/app'))
 

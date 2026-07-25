@@ -62,11 +62,22 @@
     --focus-border: #e1e0ff;
     --focus-shadow: 0 2px 20px rgba(225, 224, 255, 0.6);
 
-    /* 输入框/对话：上限由 JS 按 screen.width 写入 *-max-px；窗口变窄时 min(100%, …) */
-    --composer-content-max-px: 768px;
-    --timeline-content-max-px: 816px;
-    --composer-content-max: min(100%, var(--composer-content-max-px));
-    --timeline-content-max: min(100%, var(--timeline-content-max-px));
+    /* 输入框/对话：随中心列可用宽度伸缩，侧栏收起后自然扩展 */
+    --chat-content-min: 560px;
+    --chat-content-ratio: 72%;
+    --chat-content-cap: 1280px;
+    --composer-content-ratio: 68%;
+    --composer-content-cap: 1120px;
+    --timeline-content-max: clamp(
+      min(100%, var(--chat-content-min)),
+      var(--chat-content-ratio),
+      min(100%, var(--chat-content-cap))
+    );
+    --composer-content-max: clamp(
+      min(100%, var(--chat-content-min)),
+      var(--composer-content-ratio),
+      min(100%, var(--composer-content-cap))
+    );
 
     /* ── Tailwind HSL-compatible tokens (light) ── */
     --background: 0 0% 100%;
@@ -1242,6 +1253,12 @@
   .timeline-text-placeholder {
     color: var(--text-secondary);
     opacity: 0.35;
+  }
+  .thinking-chain-label {
+    color: var(--text-secondary);
+  }
+  .thinking-chain-body {
+    color: var(--text-secondary);
   }
   .timeline-activity-row {
     display: flex;
