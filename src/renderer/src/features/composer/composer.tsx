@@ -39,6 +39,8 @@ import { ComposerSlashPopover } from './composer-slash-popover'
 import { useComposerSend } from './use-composer-send'
 import { useComposerAttachments } from './use-composer-attachments'
 import { useComposerKeyDown } from './use-composer-keydown'
+import { useComposerFileSearch } from './use-composer-file-search'
+import { ComposerFilePopover } from './composer-file-popover'
 
 export function Composer() {
   const { t } = useTranslation()
@@ -85,6 +87,7 @@ export function Composer() {
   const thinkingPickerOpen = useUIStore((s) => s.thinkingPickerOpen)
   const setThinkingPickerOpen = useUIStore((s) => s.setThinkingPickerOpen)
   const [composerFocused, setComposerFocused] = useState(false)
+  const [editorRevision, setEditorRevision] = useState(0)
   const composerPrefill = useUIStore((s) => s.composerPrefill)
   const composerPrefillMode = useUIStore((s) => s.composerPrefillMode)
   const setComposerPrefill = useUIStore((s) => s.setComposerPrefill)
@@ -100,6 +103,7 @@ export function Composer() {
     const { displayText, attachments: atts } = serializeRichInput(el)
     setText(displayText)
     setAttachments(atts)
+    setEditorRevision((revision) => revision + 1)
   }, [])
 
   const setContent = useCallback(
@@ -152,6 +156,14 @@ export function Composer() {
     applySegmentsChange,
     currentSegments,
   )
+
+  const fileSearch = useComposerFileSearch({
+    editorRef,
+    revision: editorRevision,
+    workspaceRoot: currentWorkspace,
+    enabled: canSendMessages && voiceState !== 'recording' && voiceState !== 'transcribing',
+    onAccepted: updateFromEditor,
+  })
 
   const { sendCurrent, handleSend, runComposerAbort, handleAbort } = useComposerSend({
     editorRef,
@@ -257,7 +269,15 @@ export function Composer() {
     editorRef,
     text,
     attachments,
-    showPopover: slash.showPopover,
+    fileCompletion: {
+      show: fileSearch.show,
+      entries: fileSearch.entries,
+      selectedIdx: fileSearch.selectedIdx,
+      setSelectedIdx: fileSearch.setSelectedIdx,
+      acceptSelected: fileSearch.acceptSelected,
+      dismiss: fileSearch.dismiss,
+    },
+    showPopover: slash.showPopover && !fileSearch.show,
     filteredCommands: slash.filteredCommands,
     selectedIdx: slash.selectedIdx,
     setSelectedIdx: slash.setSelectedIdx,
@@ -296,8 +316,17 @@ export function Composer() {
           <span className="text-[12px] font-medium">{t('composer:dropOverlay')}</span>
         </div>
       </div>
+      <ComposerFilePopover
+        show={fileSearch.show}
+        loading={fileSearch.loading}
+        anchorRef={slashPopoverAnchorRef}
+        entries={fileSearch.entries}
+        selectedIdx={fileSearch.selectedIdx}
+        setSelectedIdx={fileSearch.setSelectedIdx}
+        onAccept={fileSearch.acceptEntry}
+      />
       <ComposerSlashPopover
-        show={slash.showPopover}
+        show={slash.showPopover && !fileSearch.show}
         anchorRef={slashPopoverAnchorRef}
         text={text}
         filteredCommands={slash.filteredCommands}
@@ -360,6 +389,7 @@ export function Composer() {
             onFocus={() => setComposerFocused(true)}
             onBlur={() => {
               inputHistory.onComposerBlur(text)
+              fileSearch.dismiss()
               setComposerFocused(false)
             }}
             onInput={() => {

@@ -15,6 +15,7 @@ const schemaCases = [
   ['shellOpenPathSchema', { path: '/tmp/x' }, { path: 1 }],
   ['shellShowItemSchema', { path: 'C:\\a' }, {}],
   ['workspaceFsListDirSchema', { workspaceRoot: '/w' }, { workspaceRoot: 1 }],
+  ['workspaceFsSearchSchema', { workspaceRoot: '/w', query: 'src/cmp', maxResults: 20 }, { workspaceRoot: '/w', query: 'x', maxResults: 21 }],
   ['workspaceFsReadTextSchema', { workspaceRoot: '/w', path: 'a.txt' }, { path: 'a.txt' }],
   ['workspaceFsRenameSchema', { workspaceRoot: '/w', relativePath: 'a', newName: 'b' }, { newName: 'b' }],
   ['sessionNavigateTreeSchema', { targetId: 'id-1' }, { targetId: '' }],

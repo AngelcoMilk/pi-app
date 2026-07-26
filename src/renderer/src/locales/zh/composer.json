@@ -15,6 +15,9 @@
   "confirm": "确认",
   "tabComplete": "Tab 补全",
   "escClose": "Esc 关闭",
+  "fileSearchLoading": "正在搜索项目文件…",
+  "fileSearchEmpty": "没有匹配的文件或目录",
+  "fileSearchConfirm": "选择文件 / 进入目录",
   "offlineCommands": "离线命令表",
   "category": {
     "builtin": "内置",

@@ -18,4 +18,18 @@ describe('segmentsToPromptPayload line-ref', () => {
     ])
     expect(payload).toBe('fix @src/a.ts:10 please')
   })
+
+  it('keeps workspace-relative spaces, Unicode, and Windows separators parseable', () => {
+    const payload = segmentsToPromptPayload([
+      {
+        type: 'file',
+        attachment: {
+          path: 'src\\组件 file.ts',
+          name: '组件 file.ts',
+          kind: 'code',
+        },
+      },
+    ])
+    expect(payload).toBe('@"src/组件 file.ts"')
+  })
 })

@@ -13,6 +13,12 @@ export const workspaceFsListDirSchema = z.object({
   path: z.string().optional(),
 })
 
+export const workspaceFsSearchSchema = z.object({
+  workspaceRoot: z.string().min(1),
+  query: z.string().max(512),
+  maxResults: z.number().int().min(1).max(20).optional(),
+})
+
 export const workspaceFsReadTextSchema = z.object({
   workspaceRoot: z.string(),
   path: z.string(),

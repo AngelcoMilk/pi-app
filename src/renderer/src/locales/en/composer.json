@@ -15,6 +15,9 @@
   "confirm": "Confirm",
   "tabComplete": "Tab autocomplete",
   "escClose": "Esc to close",
+  "fileSearchLoading": "Searching project files…",
+  "fileSearchEmpty": "No matching files or folders",
+  "fileSearchConfirm": "Select file / open folder",
   "offlineCommands": "Offline command table",
   "category": {
     "builtin": "Built-in",

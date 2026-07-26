@@ -19,6 +19,12 @@ function isClipboardTempPath(path: string): boolean {
   return base.startsWith('pi-clipboard-')
 }
 
+function fileReference(path: string): string {
+  const normalized = path.replace(/\\/g, '/')
+  if (!/\s/.test(normalized)) return `@${normalized}`
+  return `@"${normalized.replace(/(["\\])/g, '\\$1')}"`
+}
+
 export function segmentsToPromptPayload(segments: Segment[]): string {
   let out = ''
   for (let i = 0; i < segments.length; i++) {
@@ -37,7 +43,7 @@ export function segmentsToPromptPayload(segments: Segment[]): string {
             : String(att.line)
         out += `@${att.path}:${linePart}`
       } else {
-        out += isClipboardTempPath(att.path) ? att.path : `@${att.path}`
+        out += isClipboardTempPath(att.path) ? att.path : fileReference(att.path)
       }
     } else {
       out += seg.path

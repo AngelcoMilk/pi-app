@@ -11,6 +11,21 @@ export interface WorkspaceEnsureWorkerResponse { ok: boolean; workspaceId: strin
 export interface WorkspaceOpenResponse { workspaceId: string; path: string; name: string }
 export interface WorkspaceSwitchRequest { workspaceId: string }
 export interface WorkspaceSwitchResponse { workspaceId: string; path: string; name: string }
+export interface WorkspaceFsSearchRequest {
+  workspaceRoot: string
+  query: string
+  maxResults?: number
+}
+export interface WorkspaceFsSearchEntry {
+  path: string
+  name: string
+  isDirectory: boolean
+}
+export interface WorkspaceFsSearchResponse {
+  ok: boolean
+  entries: WorkspaceFsSearchEntry[]
+  error?: 'missing_root' | 'outside_workspace' | 'fd_unavailable' | 'search_failed'
+}
 
 // ── Session ──
 export interface SessionInfo {
@@ -266,6 +281,7 @@ export interface IpcMethodMap {
   'workspace.open': { request: WorkspaceOpenRequest; response: WorkspaceOpenResponse }
   'workspace.ensureWorker': { request: WorkspaceEnsureWorkerRequest; response: WorkspaceEnsureWorkerResponse }
   'workspace.switch': { request: WorkspaceSwitchRequest; response: WorkspaceSwitchResponse }
+  'workspace.fs.search': { request: WorkspaceFsSearchRequest; response: WorkspaceFsSearchResponse }
   'session.list': { request: SessionListRequest; response: SessionListResponse }
   'session.open': { request: SessionOpenRequest; response: SessionOpenResponse }
   'session.new': { request: SessionNewRequest; response: SessionNewResponse }

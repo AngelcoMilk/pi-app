@@ -2,6 +2,7 @@ import { useCallback } from 'react'
 import { executeSlashCommand, isExecutableBuiltin } from './slash-exec'
 import { restoreQueuedToComposer } from '@renderer/lib/composer-queue-restore'
 import { insertBrAtCursor } from './composer-editor-caret'
+import type { WorkspaceFsSearchEntry } from '@shared/ipc-contract'
 import type { SlashCommand } from './composer-constants'
 import type { EditorCursorAdapter, useComposerInputHistory } from './use-composer-input-history'
 
@@ -9,6 +10,14 @@ export function useComposerKeyDown(opts: {
   editorRef: React.RefObject<HTMLDivElement | null>
   text: string
   attachments: unknown[]
+  fileCompletion: {
+    show: boolean
+    entries: WorkspaceFsSearchEntry[]
+    selectedIdx: number
+    setSelectedIdx: (fn: (index: number) => number) => void
+    acceptSelected: () => void
+    dismiss: () => void
+  }
   showPopover: boolean
   filteredCommands: SlashCommand[]
   selectedIdx: number
@@ -32,6 +41,7 @@ export function useComposerKeyDown(opts: {
         editorRef,
         text,
         attachments,
+        fileCompletion,
         showPopover,
         filteredCommands,
         selectedIdx,
@@ -49,12 +59,36 @@ export function useComposerKeyDown(opts: {
         handleSend,
         runComposerAbort,
       } = opts
-      // 输入法正在组词时（含按 Enter 选词的瞬间），交给 IME 处理，不触发任何快捷键/发送
+      // 输入法正在组词时（含按 Enter 选词的瞬间），交给 IME 处理，不触发补全或发送
       if (e.nativeEvent.isComposing || e.keyCode === 229) return
 
       const alt = e.altKey
+      if (fileCompletion.show) {
+        if (e.key === 'Escape') {
+          e.preventDefault()
+          fileCompletion.dismiss()
+          return
+        }
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+          e.preventDefault()
+          if (fileCompletion.entries.length > 0) {
+            const direction = e.key === 'ArrowDown' ? 1 : -1
+            fileCompletion.setSelectedIdx(
+              (i) =>
+                (i + direction + fileCompletion.entries.length) % fileCompletion.entries.length,
+            )
+          }
+          return
+        }
+        if (e.key === 'Tab' || (e.key === 'Enter' && !e.shiftKey)) {
+          e.preventDefault()
+          if (fileCompletion.entries.length > 0) fileCompletion.acceptSelected()
+          return
+        }
+      }
+      const completionOpen = fileCompletion.show || showPopover
       if (
-        !showPopover &&
+        !completionOpen &&
         !alt &&
         !e.shiftKey &&
         !e.ctrlKey &&
@@ -70,12 +104,12 @@ export function useComposerKeyDown(opts: {
           return
         }
       }
-      if (alt && e.key === 'ArrowUp' && !showPopover) {
+      if (alt && e.key === 'ArrowUp' && !completionOpen) {
         e.preventDefault()
         void restoreQueuedToComposer({ currentText: text, setText: setContent })
         return
       }
-      if (e.key === 'Escape' && showComposerStop && !showPopover) {
+      if (e.key === 'Escape' && showComposerStop && !completionOpen) {
         e.preventDefault()
         void runComposerAbort(text)
         return

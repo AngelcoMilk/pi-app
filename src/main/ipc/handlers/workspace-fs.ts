@@ -2,12 +2,14 @@ import { existsSync, readFileSync, statSync } from 'fs'
 import { extname } from 'path'
 import { shell } from 'electron'
 import { workspaceFsListDir, workspaceFsReadText, workspaceFsRename, resolvePathUnderWorkspace } from '../../workspace-fs'
+import { workspaceFsSearch } from '../../workspace-file-search'
 import { registerHandler, registerHandlerWithSchema } from '../registry'
 import {
   shellOpenPathSchema,
   shellReadImagePreviewSchema,
   shellShowItemSchema,
   workspaceFsListDirSchema,
+  workspaceFsSearchSchema,
   workspaceFsReadTextSchema,
   workspaceFsRenameSchema,
 } from '../schemas'
@@ -49,6 +51,10 @@ export function registerWorkspaceFsHandlers(): void {
       workspaceRoot: req.workspaceRoot,
       path: req.path != null ? req.path : '.',
     })
+  })
+
+  registerHandlerWithSchema('ipc:workspace.fs.search', workspaceFsSearchSchema, async (req) => {
+    return workspaceFsSearch(req)
   })
 
   registerHandlerWithSchema('ipc:workspace.fs.readText', workspaceFsReadTextSchema, async (req) => {
