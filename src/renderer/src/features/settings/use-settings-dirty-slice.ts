@@ -1,5 +1,8 @@
 import { useEffect, useRef } from 'react'
-import { registerSettingsDirtySlice } from '@renderer/features/settings/settings-dirty-registry'
+import {
+  notifySettingsDirtyChanged,
+  registerSettingsDirtySlice,
+} from '@renderer/features/settings/settings-dirty-registry'
 
 type SliceInput = {
   id: string
@@ -13,6 +16,8 @@ type SliceInput = {
 export function useSettingsDirtySlice(slice: SliceInput): void {
   const ref = useRef(slice)
   ref.current = slice
+  const dirty = slice.isDirty()
+  const previousDirtyRef = useRef(dirty)
 
   useEffect(() => {
     return registerSettingsDirtySlice({
@@ -23,4 +28,10 @@ export function useSettingsDirtySlice(slice: SliceInput): void {
       discard: () => ref.current.discard(),
     })
   }, [slice.id])
+
+  useEffect(() => {
+    if (previousDirtyRef.current === dirty) return
+    previousDirtyRef.current = dirty
+    notifySettingsDirtyChanged()
+  }, [dirty])
 }
