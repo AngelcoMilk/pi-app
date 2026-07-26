@@ -16,7 +16,7 @@ export function ManualModelAddDialog({
   onConfirm: (ids: string[]) => void | Promise<void>
   onCancel: () => void
 }) {
-  const { t: tr } = useTranslation()
+  const { t: tr } = useTranslation('settings')
   const titleId = useId()
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const [value, setValue] = useState('')
@@ -75,7 +75,7 @@ export function ManualModelAddDialog({
           ? [single]
           : []
     if (!ids.length) {
-      setError(tr('models:enterAtLeastOne'))
+      setError(tr('models.enterAtLeastOne'))
       return
     }
     const toAdd: string[] = []
@@ -87,13 +87,13 @@ export function ManualModelAddDialog({
         continue
       }
       if (existingIds.has(id)) {
-        problems.push(tr('models:alreadyExists', { id }))
+        problems.push(tr('models.alreadyExists', { id }))
         continue
       }
       toAdd.push(id)
     }
     if (!toAdd.length) {
-      setError(problems[0] || tr('models:noModelToAdd'))
+      setError(problems[0] || tr('models.noModelToAdd'))
       return
     }
     setError(null)
@@ -123,17 +123,17 @@ export function ManualModelAddDialog({
         onPointerDown={(e) => e.stopPropagation()}
       >
         <h2 id={titleId} className="text-[15px] font-semibold text-foreground">
-          {tr('models:manualAddTitle')}
+          {tr('models.manualAddTitle')}
         </h2>
         <p className="mt-1 text-[12px] text-muted-foreground">
-          {tr('models:providerLabelPrefix')} <span className="font-medium text-foreground/90">{providerLabel}</span>
-          {tr('models:manualAddHint')}
+          {tr('models.providerLabelPrefix')} <span className="font-medium text-foreground/90">{providerLabel}</span>
+          {tr('models.manualAddHint')}
         </p>
         <textarea
           ref={inputRef}
           rows={3}
           disabled={busy}
-          placeholder={tr('models:manualAddPlaceholder')}
+          placeholder={tr('models.manualAddPlaceholder')}
           className="settings-field-focus mt-3 w-full resize-y rounded-lg border border-border bg-background px-3 py-2 font-mono text-[12px] leading-relaxed"
           value={value}
           onChange={(e) => {
@@ -146,9 +146,9 @@ export function ManualModelAddDialog({
         />
         {value.trim() && (
           <p className="mt-2 text-[11px] text-muted-foreground">
-            {tr('models:willAdd', { count: valid.length })}
-            {dup.length > 0 && <span> · {tr('models:skipDuplicates', { count: dup.length })}</span>}
-            {invalid.length > 0 && <span className="text-amber-700 dark:text-amber-300"> · {tr('models:invalidFormat')} {invalid.length}</span>}
+            {tr('models.willAdd', { count: valid.length })}
+            {dup.length > 0 && <span> · {tr('models.skipDuplicates', { count: dup.length })}</span>}
+            {invalid.length > 0 && <span className="text-amber-700 dark:text-amber-300"> · {tr('models.invalidFormat')} {invalid.length}</span>}
           </p>
         )}
         {error && <p className="mt-2 text-[12px] text-destructive">{error}</p>}
@@ -159,7 +159,7 @@ export function ManualModelAddDialog({
             className="settings-chip rounded-md px-3 py-1.5 text-[13px] text-muted-foreground hover:bg-accent disabled:opacity-50"
             onClick={onCancel}
           >
-            {tr('models:cancelBtn')}
+            {tr('models.cancelBtn')}
           </button>
           <button
             type="button"
@@ -167,10 +167,10 @@ export function ManualModelAddDialog({
             className="settings-chip rounded-md bg-primary px-3 py-1.5 text-[13px] text-primary-foreground disabled:opacity-50"
             onClick={() => void submit()}
           >
-            {busy ? tr('models:adding') : valid.length > 1 ? tr('models:addCount', { count: valid.length }) : tr('models:add')}
+            {busy ? tr('models.adding') : valid.length > 1 ? tr('models.addCount', { count: valid.length }) : tr('models.add')}
           </button>
         </div>
-        <p className="mt-2 text-[10px] text-muted-foreground/70">{tr('models:ctrlEnterHint')}</p>
+        <p className="mt-2 text-[10px] text-muted-foreground/70">{tr('models.ctrlEnterHint')}</p>
       </div>
     </div>,
     document.body,

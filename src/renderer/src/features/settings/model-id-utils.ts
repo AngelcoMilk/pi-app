@@ -8,13 +8,13 @@ export function sanitizeModelId(raw: string): string {
 }
 
 export function validateModelId(id: string): { ok: true } | { ok: false; reason: string } {
-  if (!id) return { ok: false, reason: i18n.t('models:errEmpty') }
-  if (id.length > 256) return { ok: false, reason: i18n.t('models:errTooLong') }
-  if (/[\x00-\x1f]/.test(id)) return { ok: false, reason: i18n.t('models:errControlChar') }
+  if (!id) return { ok: false, reason: i18n.t('settings:models.errEmpty') }
+  if (id.length > 256) return { ok: false, reason: i18n.t('settings:models.errTooLong') }
+  if (/[\x00-\x1f]/.test(id)) return { ok: false, reason: i18n.t('settings:models.errControlChar') }
   if (!MODEL_ID_RE.test(id)) {
     return {
       ok: false,
-      reason: i18n.t('models:errInvalidFormat'),
+      reason: i18n.t('settings:models.errInvalidFormat'),
     }
   }
   return { ok: true }

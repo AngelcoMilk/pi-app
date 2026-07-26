@@ -5,6 +5,7 @@ import { app } from 'electron'
 import { pathToFileURL } from 'node:url'
 import { resolveActiveSdk } from './sdk-loader'
 import { normalizeModelsConfig } from './models-config-normalize'
+import { validateModelsConfigWithSdk } from './active-sdk-models'
 
 export type PiModelsApi =
   | 'openai-completions'
@@ -79,13 +80,7 @@ async function validateWithPiSdk(config: PiModelsConfig): Promise<string | undef
   try {
     const sdk = await loadPiSdk()
     const agentDir = sdk.getAgentDir?.() ?? join(homedir(), '.pi', 'agent')
-    const tmpPath = join(agentDir, '.models-json-validate.tmp')
-    mkdirSync(dirname(tmpPath), { recursive: true })
-    writeFileSync(tmpPath, JSON.stringify(config, null, 2), 'utf-8')
-    const { ModelRegistry, AuthStorage } = sdk
-    const registry = ModelRegistry.create(AuthStorage.create(), tmpPath)
-    const err = (registry as { getModelsJsonError?: () => unknown }).getModelsJsonError?.()
-    return err ? String(err) : undefined
+    return await validateModelsConfigWithSdk(sdk, agentDir, config)
   } catch (e: unknown) {
     return (e as { message?: string })?.message || '校验失败'
   }

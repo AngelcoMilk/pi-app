@@ -32,13 +32,13 @@ export function ModelEntryEditor({
   onChange: (patch: Partial<LocalModelEntry>) => void
   onRemove: () => void
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation('settings')
   const input = model.input || ['text']
   const hasText = input.includes('text')
   const hasImage = input.includes('image')
 
   const API_OPTS = [
-    { v: '', l: t('models:inheritProvider') },
+    { v: '', l: t('models.inheritProvider') },
     { v: 'openai-completions', l: 'openai-completions' },
     { v: 'openai-responses', l: 'openai-responses' },
     { v: 'anthropic-messages', l: 'anthropic-messages' },
@@ -111,12 +111,12 @@ export function ModelEntryEditor({
           <div className="hidden shrink-0 flex-wrap justify-end gap-1 sm:flex">
             {model.reasoning && (
               <span className="rounded-full bg-violet-500/12 px-2 py-0.5 text-[9px] font-medium text-violet-700 transition-opacity duration-motion-fast dark:text-violet-300">
-                {t('models:reasoningBadge')}
+                {t('models.reasoningBadge')}
               </span>
             )}
             {hasImage && (
               <span className="rounded-full bg-sky-500/12 px-2 py-0.5 text-[9px] font-medium text-sky-700 transition-opacity duration-motion-fast dark:text-sky-300">
-                {t('models:multimodalBadge')}
+                {t('models.multimodalBadge')}
               </span>
             )}
             {model.contextWindow != null && (
@@ -140,7 +140,7 @@ export function ModelEntryEditor({
         <div className="settings-expand-inner">
           <div className="settings-model-entry-panel grid gap-3 border-t border-border/40 bg-muted/10 px-3 py-3 sm:grid-cols-2">
             <div className="sm:col-span-2">
-              <label className={labelCls}>{t('models:modelIdApi')}</label>
+              <label className={labelCls}>{t('models.modelIdApi')}</label>
               <input
                 className={inputCls}
                 value={model.id}
@@ -149,7 +149,7 @@ export function ModelEntryEditor({
               />
             </div>
             <div className="sm:col-span-2">
-              <label className={labelCls}>{t('models:displayName')}</label>
+              <label className={labelCls}>{t('models.displayName')}</label>
               <input
                 className={cn(inputCls, 'font-sans')}
                 value={model.name || ''}
@@ -158,7 +158,7 @@ export function ModelEntryEditor({
               />
             </div>
             <div>
-              <label className={labelCls}>{t('models:apiOverride')}</label>
+              <label className={labelCls}>{t('models.apiOverride')}</label>
               <select
                 className={cn(inputCls, 'font-sans')}
                 value={model.api || ''}
@@ -179,18 +179,18 @@ export function ModelEntryEditor({
                   checked={!!model.reasoning}
                   onChange={(e) => onChange({ reasoning: e.target.checked || undefined })}
                 />
-                {t('models:reasoningModel')}
+                {t('models.reasoningModel')}
               </label>
             </div>
             <div className="sm:col-span-2">
-              <label className={labelCls}>{t('models:inputLabel')}</label>
+              <label className={labelCls}>{t('models.inputLabel')}</label>
               <div className="mt-1 flex gap-2">
                 <ToggleChip active={hasText} onClick={() => setInput(!hasText, hasImage)} label="Text" />
-                <ToggleChip active={hasImage} onClick={() => setInput(hasText, !hasImage)} label={t('models:imageLabel')} />
+                <ToggleChip active={hasImage} onClick={() => setInput(hasText, !hasImage)} label={t('models.imageLabel')} />
               </div>
             </div>
             <div>
-              <label className={labelCls}>{t('models:contextWindowLabel')}</label>
+              <label className={labelCls}>{t('models.contextWindowLabel')}</label>
               <input
                 type="number"
                 className={inputCls}
@@ -205,7 +205,7 @@ export function ModelEntryEditor({
               />
             </div>
             <div>
-              <label className={labelCls}>{t('models:maxOutputToken')}</label>
+              <label className={labelCls}>{t('models.maxOutputToken')}</label>
               <input
                 type="number"
                 className={inputCls}
@@ -222,14 +222,14 @@ export function ModelEntryEditor({
             {model.reasoning && (
               <div className="sm:col-span-2">
                 <div className="mb-1 flex items-center justify-between">
-                  <label className={labelCls}>{t('models:thinkingLevelMap')}</label>
+                  <label className={labelCls}>{t('models.thinkingLevelMap')}</label>
                   <button
                     type="button"
                     className="settings-chip flex items-center gap-1 rounded-md border border-border/60 px-2 py-0.5 text-[10px] text-muted-foreground hover:text-foreground"
                     onClick={addThinkingEntry}
                   >
                     <Plus className="h-3 w-3" />
-                    {t('models:addBtn')}
+                    {t('models.addBtn')}
                   </button>
                 </div>
                 <p className="mb-2 text-[10px] text-muted-foreground/60">
@@ -254,7 +254,7 @@ export function ModelEntryEditor({
                         <input
                           className={cn(inputCls, 'font-mono')}
                           value={val}
-                          placeholder={t('models:thinkingParamPlaceholder')}
+                          placeholder={t('models.thinkingParamPlaceholder')}
                           onChange={(e) => setThinkingValue(key, e.target.value)}
                         />
                         <button

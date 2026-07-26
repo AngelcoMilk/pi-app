@@ -21,7 +21,7 @@ import { btnOutline, btnPrimary, cloneConfig, configEqual, defaultModelEntry, Pr
 import { ModelsProviderCard } from './models-provider-card'
 
 export function ModelsSettingsPanel() {
-  const { t } = useTranslation()
+  const { t } = useTranslation('settings')
   const [filePath, setFilePath] = useState('')
   const [baseline, setBaseline] = useState<PiModelsConfigPayload | null>(null)
   const [draft, setDraft] = useState<PiModelsConfigPayload | null>(null)
@@ -61,7 +61,7 @@ export function ModelsSettingsPanel() {
         return next
       })
     } catch (e: unknown) {
-      toast.error((e instanceof Error ? e.message : String(e)) || t('models:loadFailedToast'))
+      toast.error((e instanceof Error ? e.message : String(e)) || t('models.loadFailedToast'))
     } finally {
       setLoading(false)
     }
@@ -83,12 +83,12 @@ export function ModelsSettingsPanel() {
 
   useSettingsDirtySlice({
     id: 'pi-models',
-    label: t('models:modelConfig'),
+    label: t('models.modelConfig'),
     isDirty: () => !configEqual(draft, baseline),
     commit: async () => {
       if (!draft || configEqual(draft, baseline)) return
       const res = await ipcClient.invoke('pi.models.set', { config: draft })
-      if (!res?.ok) throw new Error(res?.error || t('models:saveFailed'))
+      if (!res?.ok) throw new Error(res?.error || t('models.saveFailed'))
       await load()
     },
     discard: () => {
@@ -109,7 +109,7 @@ export function ModelsSettingsPanel() {
     })
     setExpanded((e) => ({ ...e, [key]: true }))
     setAddMenuOpen(false)
-    toast.success(t('models:addedProviderToast', { label: preset.label, key }))
+    toast.success(t('models.addedProviderToast', { label: preset.label, key }))
   }
 
   const removeProvider = (id: string) => {
@@ -136,7 +136,7 @@ export function ModelsSettingsPanel() {
         name: templ.name || prev.name,
       }
     })
-    toast.success(t('models:applyTemplateToast', { label: preset.label }))
+    toast.success(t('models.applyTemplateToast', { label: preset.label }))
   }
 
   const fetchRemoteCatalog = async (providerId: string) => {
@@ -177,7 +177,7 @@ export function ModelsSettingsPanel() {
     })
     const key = `${providerId}\0${modelId}`
     setExpandedLocalModel((e) => ({ ...e, [key]: true }))
-    toast.success(t('models:addedModelToast', { id: modelId }))
+    toast.success(t('models.addedModelToast', { id: modelId }))
   }
 
   const addAllNewToLocal = (providerId: string) => {
@@ -220,13 +220,13 @@ export function ModelsSettingsPanel() {
   }
 
   if (loading && !draft) {
-    return <p className="text-[13px] text-muted-foreground">{t('models:loadingModels')}</p>
+    return <p className="text-[13px] text-muted-foreground">{t('models.loadingModels')}</p>
   }
 
   return (
     <div className="space-y-5">
       <SettingsPageHeader
-        title={t('models:providerLabel')}
+        title={t('models.providerLabel')}
         description={t('models.description', { path: filePath || '~/.pi/agent/models.json' })}
         action={
           <button type="button" className={btnOutline} onClick={() => void load()}>
@@ -246,7 +246,7 @@ export function ModelsSettingsPanel() {
       {loadWarnings.length > 0 && !parseError && (
         <details className="ui-enter rounded-md border border-border/50 bg-muted/20 px-3 py-2 text-[12px] text-muted-foreground">
           <summary className="cursor-pointer font-medium text-foreground/80">
-            {t('models:autoFixedCount', { count: loadWarnings.length })}
+            {t('models.autoFixedCount', { count: loadWarnings.length })}
           </summary>
           <ul className="mt-2 max-h-40 list-disc space-y-0.5 overflow-y-auto pl-4">
             {loadWarnings.map((w, i) => (
@@ -267,19 +267,19 @@ export function ModelsSettingsPanel() {
         <div className="relative">
           <button type="button" className={btnPrimary} onClick={() => setAddMenuOpen((o) => !o)}>
             <Plus className="mr-1 inline h-3.5 w-3.5" />
-            {t('models:addProviderBtn')}
+            {t('models.addProviderBtn')}
           </button>
           {addMenuOpen && (
             <>
               <button
                 type="button"
                 className="backdrop-motion fixed inset-0 z-40 cursor-default bg-black/20"
-                aria-label={t('models:close')}
+                aria-label={t('models.close')}
                 onClick={() => setAddMenuOpen(false)}
               />
               <div className="popover-motion absolute right-0 z-50 mt-2 w-[min(360px,calc(100vw-2rem))] rounded-xl border border-border/80 bg-popover p-2 shadow-lg">
                 <div className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
-                  {t('models:selectTemplate')}
+                  {t('models.selectTemplate')}
                 </div>
                 <div className="max-h-[min(420px,60vh)] overflow-y-auto">
                   {PROVIDER_PRESETS.map((preset) => (
@@ -294,7 +294,7 @@ export function ModelsSettingsPanel() {
                         <div className="text-[13px] font-medium">{preset.label}</div>
                         <div className="text-[11px] text-muted-foreground">{preset.tagline}</div>
                         <div className="mt-0.5 font-mono text-[10px] text-muted-foreground/60">
-                          {t('models:keyName')} {preset.defaultKey}
+                          {t('models.keyName')} {preset.defaultKey}
                           {preset.starterModels?.length
                             ? ` · ${t('models.containsModels', { count: preset.starterModels.length })}`
                             : ` · ${t('models.needsFetch')}`}
@@ -312,8 +312,8 @@ export function ModelsSettingsPanel() {
       {providerIds.length === 0 ? (
         <div className="ui-enter rounded-xl border border-dashed border-border/60 bg-muted/15 px-6 py-10 text-center">
           <Sparkles className="mx-auto h-8 w-8 text-muted-foreground/35" />
-          <p className="mt-3 text-[13px] font-medium text-foreground/90">{t('models:noProviders')}</p>
-          <p className="mt-1 text-[12px] text-muted-foreground">{t('models:noProvidersHint')}</p>
+          <p className="mt-3 text-[13px] font-medium text-foreground/90">{t('models.noProviders')}</p>
+          <p className="mt-1 text-[12px] text-muted-foreground">{t('models.noProvidersHint')}</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -336,7 +336,7 @@ export function ModelsSettingsPanel() {
               }
               onApplyPreset={(pr) =>
                 setConfirmState({
-                  title: t('models:applyTemplateTitle'),
+                  title: t('models.applyTemplateTitle'),
                   message: t('models.applyTemplateConfirm', { label: pr.label }),
                   onConfirm: () => {
                     setConfirmState(null)

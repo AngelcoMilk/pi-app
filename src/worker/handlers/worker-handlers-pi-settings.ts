@@ -1,9 +1,8 @@
-import { resolveModelFromRegistry, type PiModelRegistryLike } from '@shared/pi-model-registry'
 import { errorMessage } from '@shared/error-message'
 import type { WorkerIncomingMessage } from '../worker-port-types.js'
 import type { WorkerReply } from '../worker-handler-types.js'
 import { patchPiCompactionTokens, type SettingsManagerLike } from '../worker-compaction-patch.js'
-import { st, baseEvent, emit, currentSessionModelKey } from '../worker-runtime.js'
+import { st } from '../worker-runtime.js'
 
 export async function handleGetpisettings(msg: WorkerIncomingMessage, reply: WorkerReply): Promise<void> {
         try {
@@ -97,20 +96,6 @@ export async function handleSetpisettings(msg: WorkerIncomingMessage, reply: Wor
           if (patch.httpIdleTimeoutMs !== undefined) sm.setHttpIdleTimeoutMs(Number(patch.httpIdleTimeoutMs))
           if (patch.isProjectTrusted === true) sm.setProjectTrusted(true)
           if (patch.isProjectTrusted === false) sm.setProjectTrusted(false)
-          if (st.session && patch.defaultProvider !== undefined && patch.defaultModel !== undefined) {
-            const provider = String(patch.defaultProvider)
-            const modelId = String(patch.defaultModel)
-            const model = resolveModelFromRegistry(st.session.modelRegistry as PiModelRegistryLike, provider, modelId)
-            if (model) {
-              try {
-                await st.session.setModel(model as Parameters<typeof st.session.setModel>[0])
-                const modelStr = currentSessionModelKey()
-                emit({ ...baseEvent(), type: 'run', phase: 'state', model: modelStr, thinkingLevel: st.session.thinkingLevel })
-              } catch (e) {
-                console.error('[Worker] setPiSettings setModel failed:', e)
-              }
-            }
-          }
           reply({ type: 'setPiSettings-done', ok: true })
         } catch (e: unknown) {
           reply({ type: 'error', error: `setPiSettings failed: ${errorMessage(e)}` })

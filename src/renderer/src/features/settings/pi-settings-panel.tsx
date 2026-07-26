@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next'
 import { ipcClient, onAppEvent } from '@renderer/lib/ipc-client'
 import { useUIStore } from '@renderer/stores/ui-store'
 import { refreshComposerRunDisplay } from '@renderer/lib/composer-run-display'
-import { applyPiDefaultModelToWorkerSession } from '@renderer/lib/sync-session-model'
 import { useSettingsDirtySlice } from '@renderer/features/settings/use-settings-dirty-slice'
 import { notifySettingsDirtyChanged } from '@renderer/features/settings/settings-dirty-registry'
 import {
@@ -17,6 +16,7 @@ import {
 import { PiSettingsSdkSection } from './pi-settings-sdk-section'
 import { PiSettingsFormSections } from './pi-settings-form-sections'
 import { PiSettingsEnvAuthRows } from './pi-settings-env-auth-rows'
+import { savePiSettingsDraft } from './save-pi-settings'
 
 export type { PiSettingsSnapshot } from './pi-settings-shared'
 
@@ -185,14 +185,18 @@ export function PiSettingsPanel() {
     isDirty: () => !settingsEqual(draft, baseline),
     commit: async () => {
       if (!draft || settingsEqual(draft, baseline)) return
-      const defaultModelChanged =
-        String(baseline?.defaultProvider ?? '') !== String(draft.defaultProvider ?? '') ||
-        String(baseline?.defaultModel ?? '') !== String(draft.defaultModel ?? '')
-      const res = await ipcClient.invoke('pi.settings.set', { patch: draft })
-      if (res?.ok === false) throw new Error(res.error || t('common:saveFailed'))
-      await reloadPiForm()
-      if (defaultModelChanged) await applyPiDefaultModelToWorkerSession()
-      else await refreshComposerRunDisplay()
+      try {
+        await savePiSettingsDraft(draft, {
+          setSettings: (patch) => ipcClient.invoke('pi.settings.set', { patch }),
+          reload: reloadPiForm,
+          refreshComposer: refreshComposerRunDisplay,
+        })
+      } catch (error) {
+        if (error instanceof Error && error.message === 'SAVE_FAILED') {
+          throw new Error(t('common:saveFailed'))
+        }
+        throw error
+      }
     },
     discard: () => {
       void reloadPiForm()

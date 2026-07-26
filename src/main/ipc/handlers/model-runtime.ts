@@ -4,11 +4,12 @@ import { configStore } from '../../config-store'
 import { isSandboxWorkspacePath } from '../../sandbox-workspaces'
 import { readModelsConfigRaw, modelsCatalogFromConfig } from '../../pi-models-json'
 import { getActiveSdkModule } from '../sdk-session'
+import { listAvailableModelsWithSdk, resolveAvailableModels } from '../../active-sdk-models'
 
 export function registerModelRuntimeHandlers(): void {
   registerHandler('ipc:model.list', async (req) => {
     const scope = req?.scope === 'available' ? 'available' : 'catalog'
-    const mapRegistry = (models: { id: string; name?: string; provider?: string; contextWindow?: number; maxOutput?: number; maxTokens?: number }[]) =>
+    const mapRegistry = (models: readonly { id: string; name?: string; provider?: string; contextWindow?: number; maxOutput?: number; maxTokens?: number }[]) =>
       models.map((m) => ({
         id: m.id,
         name: m.name || m.id,
@@ -26,24 +27,21 @@ export function registerModelRuntimeHandlers(): void {
 
     if (scope === 'catalog') return catalogFromDisk()
 
-    if (workerManager.isRunning) {
-      try {
-        const models = await workerManager.getModels()
-        if (models.length > 0) return { models }
-      } catch (e) {
-        console.error('[IPC] model.list worker failed:', e)
-      }
-    }
-    try {
-      const { ModelRegistry, AuthStorage } = await getActiveSdkModule()
-      const auth = AuthStorage.create()
-      const registry = ModelRegistry.create(auth)
-      const models = await registry.getAvailable()
-      if (models.length > 0) return { models: mapRegistry(models) }
-    } catch (e) {
-      console.error('[IPC] model.list failed:', e)
-    }
-    return catalogFromDisk()
+    const models = await resolveAvailableModels({
+      worker: workerManager.isRunning
+        ? async () =>
+            mapRegistry(
+              (await workerManager.getModels()).filter(
+                (model): model is typeof model & { id: string } => typeof model.id === 'string',
+              ),
+            )
+        : undefined,
+      sdk: async () => mapRegistry(await listAvailableModelsWithSdk(await getActiveSdkModule())),
+      catalog: () => catalogFromDisk().models,
+      onWorkerError: (error) => console.error('[IPC] model.list worker failed:', error),
+      onSdkError: (error) => console.error('[IPC] model.list failed:', error),
+    })
+    return { models }
   })
 
   registerHandler('ipc:model.set', async (req) => {

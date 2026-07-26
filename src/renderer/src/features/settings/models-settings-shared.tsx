@@ -29,7 +29,7 @@ export function configEqual(a: PiModelsConfigPayload | null, b: PiModelsConfigPa
 }
 
 export function maskApiKey(key?: string): string {
-  if (!key) return i18n.t('models:notConfigured')
+  if (!key) return i18n.t('settings:models.notConfigured')
   if (key.startsWith('$')) return key
   if (key.startsWith('!')) return '!command'
   if (key.length <= 8) return '••••••••'

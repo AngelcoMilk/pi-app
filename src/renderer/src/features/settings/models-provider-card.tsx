@@ -63,7 +63,7 @@ export function ModelsProviderCard({
   onUpdateModel: (modelId: string, patch: Partial<LocalModelEntry>) => void
   onRemoveModel: (modelId: string) => void
 }) {
-  const { t } = useTranslation()
+  const { t } = useTranslation('settings')
   const p = config.providers[pid]
   const preset = guessPresetForProvider(pid, p)
   const displayName = p.name || preset?.label || pid
@@ -94,16 +94,16 @@ export function ModelsProviderCard({
             )}
           </div>
           <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
-            {p.baseUrl || t('models:notSetBaseUrl')}
+            {p.baseUrl || t('models.notSetBaseUrl')}
             <span className="mx-1.5 text-border">·</span>
-            {API_OPTS.find((o) => o.v === p.api)?.l || p.api || t('models:apiNotSetLabel')}
+            {API_OPTS.find((o) => o.v === p.api)?.l || p.api || t('models.apiNotSetLabel')}
             <span className="mx-1.5 text-border">·</span>
             {maskApiKey(p.apiKey)}
           </div>
         </div>
         <div className="shrink-0 text-right">
           <div className="text-[12px] font-medium tabular-nums">{modelCount}</div>
-          <div className="text-[10px] text-muted-foreground">{t('models:modelLabel')}</div>
+          <div className="text-[10px] text-muted-foreground">{t('models.modelLabel')}</div>
         </div>
       </button>
 
@@ -111,7 +111,7 @@ export function ModelsProviderCard({
         <div className="settings-expand-inner">
           <div className="settings-expand-content space-y-4 border-t border-border/40 bg-background/30 px-4 py-4">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[11px] text-muted-foreground">{t('models:changeTemplate')}</span>
+              <span className="text-[11px] text-muted-foreground">{t('models.changeTemplate')}</span>
               {PROVIDER_PRESETS.slice(0, 6).map((pr) => (
                 <button
                   key={pr.id}
@@ -127,7 +127,7 @@ export function ModelsProviderCard({
 
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
-                <label className="mb-1 block text-[11px] text-muted-foreground">{t('models:labelName')}</label>
+                <label className="mb-1 block text-[11px] text-muted-foreground">{t('models.labelName')}</label>
                 <input
                   className={inputCls}
                   value={p.name || ''}
@@ -135,7 +135,7 @@ export function ModelsProviderCard({
                 />
               </div>
               <div>
-                <label className="mb-1 block text-[11px] text-muted-foreground">{t('models:labelApi')}</label>
+                <label className="mb-1 block text-[11px] text-muted-foreground">{t('models.labelApi')}</label>
                 <select
                   className={cn(selectCls, 'w-full')}
                   value={p.api || 'openai-completions'}
@@ -149,7 +149,7 @@ export function ModelsProviderCard({
                 </select>
               </div>
               <div className="sm:col-span-2">
-                <label className="mb-1 block text-[11px] text-muted-foreground">{t('models:labelBaseUrl')}</label>
+                <label className="mb-1 block text-[11px] text-muted-foreground">{t('models.labelBaseUrl')}</label>
                 <input
                   className={inputCls}
                   value={p.baseUrl || ''}
@@ -158,7 +158,7 @@ export function ModelsProviderCard({
                 />
               </div>
               <div className="sm:col-span-2">
-                <label className="mb-1 block text-[11px] text-muted-foreground">{t('models:labelApiKey')}</label>
+                <label className="mb-1 block text-[11px] text-muted-foreground">{t('models.labelApiKey')}</label>
                 <div className="relative">
                   <input
                     className={cn(inputCls, 'pr-9')}
@@ -171,7 +171,7 @@ export function ModelsProviderCard({
                     type="button"
                     className="absolute right-1 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:text-foreground"
                     onClick={onToggleApiKeyVisible}
-                    aria-label={apiKeyVisible ? t('models:hideKeyLabel') : t('models:showKeyLabel')}
+                    aria-label={apiKeyVisible ? t('models.hideKeyLabel') : t('models.showKeyLabel')}
                   >
                     {apiKeyVisible ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                   </button>
@@ -198,7 +198,7 @@ export function ModelsProviderCard({
                 onClick={onRemoveProvider}
               >
                 <Trash2 className="mr-1 inline h-3.5 w-3.5" />
-                {t('models:deleteBtn')}
+                {t('models.deleteBtn')}
               </button>
             </div>
 
