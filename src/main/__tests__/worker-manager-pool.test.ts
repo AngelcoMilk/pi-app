@@ -8,6 +8,8 @@ import {
   evictBackgroundWorkers,
   evictIdleWorkers,
   pruneIdleWorkersByTimeout,
+  remapSessionWorkerSlot,
+  rejectPendingWorkerRequests,
   slotRequest,
 } from '../worker-manager-pool'
 import {
@@ -220,6 +222,67 @@ describe('session-scoped RPC routing', () => {
 
     expect(manager.focusExistingSession('/s/b')).toBe(true)
     expect(internals.foregroundPoolKey).toBe(backgroundKey)
+  })
+})
+
+describe('session worker re-key collisions', () => {
+  it('disposes and rejects a conflicting idle target before replacement', async () => {
+    const sourceKey = normalizeSessionKey('/s/source')
+    const targetKey = normalizeSessionKey('/s/target')
+    const source = fakeSlot(sourceKey, '/w', false)
+    const target = fakeSlot(targetKey, '/w', false)
+    const pendingRejection = vi.fn()
+    target.pendingRequests.set('pending', {
+      resolve: vi.fn(),
+      reject: pendingRejection,
+      timer: setTimeout(() => {}, 60_000),
+    })
+    const pool = new Map<string, WorkerSlot>([
+      [sourceKey, source],
+      [targetKey, target],
+    ])
+    const dispose = vi.fn(async (slot: WorkerSlot) => {
+      slot.stopping = true
+      rejectPendingWorkerRequests(slot, new Error('Worker slot replaced'))
+    })
+
+    let foregroundKey = sourceKey
+    foregroundKey = await remapSessionWorkerSlot(pool, foregroundKey, '/s/target', dispose)
+
+    expect(dispose).toHaveBeenCalledWith(target)
+    expect(pendingRejection).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'Worker slot replaced' }),
+    )
+    expect(pool.size).toBe(1)
+    expect(pool.get(targetKey)).toBe(source)
+    expect(pool.has(sourceKey)).toBe(false)
+    expect(source.poolKey).toBe(targetKey)
+    expect(source.sessionFile).toBe(targetKey)
+    expect(foregroundKey).toBe(targetKey)
+  })
+
+  it('rejects a running target collision without mutating either slot', async () => {
+    const sourceKey = normalizeSessionKey('/s/source')
+    const targetKey = normalizeSessionKey('/s/target')
+    const source = fakeSlot(sourceKey, '/w', false)
+    const target = fakeSlot(targetKey, '/w', true)
+    const pool = new Map<string, WorkerSlot>([
+      [sourceKey, source],
+      [targetKey, target],
+    ])
+    const dispose = vi.fn()
+
+    const foregroundKey = sourceKey
+    await expect(
+      remapSessionWorkerSlot(pool, foregroundKey, '/s/target', dispose),
+    ).rejects.toThrow('SESSION_WORKER_TARGET_BUSY')
+
+    expect(dispose).not.toHaveBeenCalled()
+    expect(foregroundKey).toBe(sourceKey)
+    expect(pool.get(sourceKey)).toBe(source)
+    expect(pool.get(targetKey)).toBe(target)
+    expect(source.poolKey).toBe(sourceKey)
+    expect(source.sessionFile).toBe(sourceKey)
   })
 })
 

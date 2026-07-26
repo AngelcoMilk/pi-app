@@ -24,6 +24,7 @@ import {
   forkWorkerForCwd,
   getBackgroundWorkerState,
   pruneIdleWorkersByTimeout,
+  remapSessionWorkerSlot,
   slotRequest,
 } from './worker-manager-pool'
 import type { WorkerInitResult, WorkerSlot } from './worker-manager-types'
@@ -31,6 +32,7 @@ import { normalizeSessionKey, workspacePoolKey } from './worker-session-key'
 import { readMaxSessionWorkers } from './worker-pool-config'
 import { configStore } from './config-store'
 import { readSessionMetaFromFile } from './session-file-meta'
+import { getSessionLeafOverride } from './session-leaf-override'
 
 interface InitResult extends WorkerInitResult {}
 
@@ -441,7 +443,7 @@ export class WorkerManager {
     const sessionId = String(r.sessionId ?? '')
     const sessionFile = r.sessionFile ? String(r.sessionFile) : undefined
     if (sessionFile) {
-      this.remapForegroundSlotToSessionFile(sessionFile)
+      await this.remapForegroundSlotToSessionFile(sessionFile)
     }
     return { sessionId, sessionFile }
   }
@@ -450,20 +452,10 @@ export class WorkerManager {
    * After Runtime creates a new session file (new/fork/clone), re-key the
    * foreground pool slot so subsequent RPCs hit the correct worker identity.
    */
-  private remapForegroundSlotToSessionFile(sessionFile: string): void {
-    const sk = normalizeSessionKey(sessionFile)
-    if (!sk) return
-    const slot = this.foregroundSlot()
-    if (!slot || slot.stopping) return
-    if (slot.sessionFile === sk && slot.poolKey === sk) return
-    const previousKey = slot.poolKey
-    if (previousKey !== sk) {
-      this.pool.delete(previousKey)
-      slot.poolKey = sk
-      this.pool.set(sk, slot)
-      this.foregroundPoolKey = sk
-    }
-    slot.sessionFile = sk
+  private async remapForegroundSlotToSessionFile(sessionFile: string): Promise<void> {
+    const sourceKey = this.foregroundPoolKey
+    if (!sourceKey) return
+    this.foregroundPoolKey = await remapSessionWorkerSlot(this.pool, sourceKey, sessionFile)
   }
 
   async forkSession(opts: {
@@ -492,7 +484,7 @@ export class WorkerManager {
       return { error: String((r as { error?: string }).error || 'fork failed') }
     }
     const sessionFile = r.sessionFile ? String(r.sessionFile) : undefined
-    if (sessionFile) this.remapForegroundSlotToSessionFile(sessionFile)
+    if (sessionFile) await this.remapForegroundSlotToSessionFile(sessionFile)
     return {
       cancelled: !!r.cancelled,
       sessionId: r.sessionId ? String(r.sessionId) : undefined,
@@ -520,7 +512,7 @@ export class WorkerManager {
       return { error: String((r as { error?: string }).error || 'clone failed') }
     }
     const sessionFile = r.sessionFile ? String(r.sessionFile) : undefined
-    if (sessionFile) this.remapForegroundSlotToSessionFile(sessionFile)
+    if (sessionFile) await this.remapForegroundSlotToSessionFile(sessionFile)
     return {
       cancelled: !!r.cancelled,
       sessionId: r.sessionId ? String(r.sessionId) : undefined,
@@ -655,14 +647,7 @@ export class WorkerManager {
     await this.ensureSessionWorker(sessionFile, cwd)
     // Re-apply rewound leaf tip (main override map) so agent context matches UI.
     let leafId = opts?.leafId
-    if (leafId === undefined) {
-      try {
-        const { getSessionLeafOverride } = await import('./session-leaf-override.js')
-        leafId = getSessionLeafOverride(sessionFile)
-      } catch {
-        leafId = undefined
-      }
-    }
+    if (leafId === undefined) leafId = getSessionLeafOverride(sessionFile)
     const r = await this.request('loadSession', {
       sessionFile,
       force: opts?.force === true,

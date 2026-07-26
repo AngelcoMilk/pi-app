@@ -17,6 +17,8 @@ import {
   setPendingWorkerSessionFile,
 } from '../../session-bind-state'
 import { flattenTreeFromSessionFile } from '../../session-tree-from-file'
+import { listForkCandidatesFromSessionFile } from '../../session-fork-candidates'
+import { getSessionLeafOverride, setSessionLeafOverride } from '../../session-leaf-override'
 import { listSessionsOnDisk, type SessionOnDiskRow } from '../sdk-session'
 import type { PiSessionMessage } from '@shared/worker-message'
 import { registerHandler, registerHandlerWithSchema } from '../registry'
@@ -98,14 +100,7 @@ export function registerSessionHandlers(): void {
     let sessionFile = req?.sessionFile as string | undefined
     let workerSessionFile: string | undefined
     let leafOverride: string | null | undefined
-    if (sessionFile) {
-      try {
-        const { getSessionLeafOverride } = await import('../../session-leaf-override.js')
-        leafOverride = getSessionLeafOverride(sessionFile)
-      } catch {
-        /* ignore */
-      }
-    }
+    if (sessionFile) leafOverride = getSessionLeafOverride(sessionFile)
     if (workerManager.isRunning) {
       try {
         const st = sessionFile
@@ -122,7 +117,7 @@ export function registerSessionHandlers(): void {
     }
     if (sessionFile) {
       try {
-        const r = await flattenTreeFromSessionFile(sessionFile, cwd, leafOverride ?? undefined)
+        const r = await flattenTreeFromSessionFile(sessionFile, cwd, leafOverride)
         return { nodes: r.nodes, leafId: r.leafId, workerBound: workerSessionFile === sessionFile }
       } catch (e: unknown) {
         return { nodes: [], leafId: null, error: errorMessage(e) }
@@ -159,11 +154,7 @@ export function registerSessionHandlers(): void {
       })
       // Persist leaf tip for disk getMessages / next loadSession (pi does not write leaf to JSONL).
       if (!result.cancelled && req.sessionFile) {
-        const { setSessionLeafOverride } = await import('../../session-leaf-override.js')
-        const leaf =
-          result.leafId !== undefined && result.leafId !== null
-            ? result.leafId
-            : req.targetId
+        const leaf = result.leafId !== undefined ? result.leafId : req.targetId
         setSessionLeafOverride(req.sessionFile, leaf)
       }
       return result
@@ -204,7 +195,6 @@ export function registerSessionHandlers(): void {
     // Disk-first timeline preview. NEVER spawn/ensure a worker just to read history —
     // that was the main cause of slow session switches (loadSession + dispose thrash).
     try {
-      const { getSessionLeafOverride } = await import('../../session-leaf-override.js')
       let leafId: string | null | undefined =
         typeof req.leafId === 'string'
           ? req.leafId
@@ -467,8 +457,8 @@ export function registerSessionHandlers(): void {
     const sessionFile = String(req?.sessionFile || '').trim()
     try {
       if (!sessionFile) return { messages: [] }
-      const messages = await workerManager.getForkMessages(sessionFile)
-      return { messages }
+      const leafId = getSessionLeafOverride(sessionFile)
+      return { messages: listForkCandidatesFromSessionFile(sessionFile, leafId) }
     } catch (e: unknown) {
       return { messages: [], error: errorMessage(e) }
     }

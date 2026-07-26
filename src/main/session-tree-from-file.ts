@@ -61,7 +61,7 @@ export async function flattenTreeFromSessionFile(
   }
 
   let leafId: string | null = leafIdOverride ?? null
-  if (leafId == null) {
+  if (leafIdOverride === undefined) {
     for (let i = entries.length - 1; i >= 0; i--) {
       const e = entries[i]
       if (e.type === 'message' && e.message?.role === 'assistant') {

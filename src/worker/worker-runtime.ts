@@ -220,7 +220,7 @@ export async function switchOrLoadSession(
     // Cold path: build runtime opened on this file
     await disposeRuntimeOrSession()
     const agentDir = sdk.getAgentDir()
-    const sm = sdk.SessionManager.open(sessionFile, undefined, st.currentCwd || undefined)
+    const sm = sdk.SessionManager.open(sessionFile)
     if (leafOverride === null) sm.resetLeaf?.()
     else if (typeof leafOverride === 'string' && leafOverride.length > 0) {
       try {
@@ -231,7 +231,7 @@ export async function switchOrLoadSession(
     }
     const createRuntime = buildRuntimeFactory()
     const runtime = await sdk.createAgentSessionRuntime(createRuntime, {
-      cwd: st.currentCwd || sm.getCwd?.() || process.cwd(),
+      cwd: sm.getCwd?.() || st.currentCwd || process.cwd(),
       agentDir,
       sessionManager: sm,
     })
@@ -242,9 +242,7 @@ export async function switchOrLoadSession(
     return
   }
 
-  const result = await st.runtime.switchSession(sessionFile, {
-    cwdOverride: st.currentCwd || undefined,
-  })
+  const result = await st.runtime.switchSession(sessionFile)
   if (result.cancelled) {
     throw new Error('SESSION_SWITCH_CANCELLED')
   }
@@ -288,7 +286,7 @@ export async function runtimeFork(
 
 function buildCommandContextActions(sess: AgentSession) {
   return {
-    waitForIdle: () => sess.agent.waitForIdle(),
+    waitForIdle: () => sess.waitForIdle(),
     // Extension session replacement deferred (PRD: extension parity out of scope).
     newSession: async () => ({ cancelled: true }),
     fork: async () => ({ cancelled: true }),

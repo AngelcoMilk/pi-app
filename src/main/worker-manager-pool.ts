@@ -5,7 +5,7 @@ import type { WorkerResponsePayload } from '@shared/worker-rpc-types'
 import { resolveActiveSdk } from './sdk-loader'
 import type { WorkerInitResult, WorkerSlot } from './worker-manager-types'
 import { readMaxSessionWorkers, minutesToIdleDelayMs, readSessionWorkerIdleTimeoutMinutes } from './worker-pool-config'
-import { workspacePoolKey } from './worker-session-key'
+import { normalizeSessionKey, workspacePoolKey } from './worker-session-key'
 
 function createSlot(
   poolKey: string,
@@ -47,6 +47,36 @@ export function rejectPendingWorkerRequests(slot: WorkerSlot, reason: Error): vo
     pending.reject(reason)
   }
   slot.pendingRequests.clear()
+}
+
+export async function remapSessionWorkerSlot(
+  pool: Map<string, WorkerSlot>,
+  sourceKey: string,
+  sessionFile: string,
+  dispose: (slot: WorkerSlot) => Promise<void> = disposeWorkerSlot,
+): Promise<string> {
+  const targetKey = normalizeSessionKey(sessionFile)
+  if (!targetKey) return sourceKey
+  const source = pool.get(sourceKey)
+  if (!source || source.stopping) return sourceKey
+  if (sourceKey === targetKey) {
+    source.sessionFile = targetKey
+    return targetKey
+  }
+
+  const conflict = pool.get(targetKey)
+  if (conflict && conflict !== source) {
+    if (conflict.agentTurnActive) throw new Error('SESSION_WORKER_TARGET_BUSY')
+    rejectPendingWorkerRequests(conflict, new Error('Worker slot replaced'))
+    await dispose(conflict)
+    if (pool.get(targetKey) === conflict) pool.delete(targetKey)
+  }
+
+  if (pool.get(sourceKey) === source) pool.delete(sourceKey)
+  source.poolKey = targetKey
+  source.sessionFile = targetKey
+  pool.set(targetKey, source)
+  return targetKey
 }
 
 export function attachWorkerHandlers(
