@@ -8,7 +8,10 @@ import type {
 import type { AppEvent } from '@shared/app-events'
 import { formatSessionModelKey, type SessionModelRef } from '@shared/worker-model'
 import { createDesktopUIBridge, type DesktopUIBridge } from './desktop-ui-bridge.js'
-import { handleSessionEvent as dispatchSessionEvent } from './worker-session-events.js'
+import {
+  handleSessionEvent as dispatchSessionEvent,
+  resetSessionEventTracking,
+} from './worker-session-events.js'
 import { errorMessage } from '@shared/error-message'
 
 export type WorkerMutableState = {
@@ -27,6 +30,7 @@ export type WorkerMutableState = {
   currentTurnId: string
   unsubscribe: (() => void) | null
   agentTurnActive: boolean
+  promptPreflightActive: boolean
   promptSent: boolean
 }
 
@@ -44,11 +48,17 @@ export const st: WorkerMutableState = {
   currentTurnId: '',
   unsubscribe: null,
   agentTurnActive: false,
+  promptPreflightActive: false,
   promptSent: false,
 }
 
 function nextSeq(): number {
   return ++st.seq
+}
+
+export function beginRunIdentity(): void {
+  st.currentRunId = `run-${nextSeq()}`
+  st.currentTurnId = `turn-${nextSeq()}`
 }
 
 export function emit(event: AppEvent): void {
@@ -89,8 +99,13 @@ function detachSessionSubscription(): void {
 /** After Runtime replaces the AgentSession: resubscribe + rebind desktop extensions. */
 export async function rebindAfterRuntimeReplace(session: AgentSession): Promise<void> {
   detachSessionSubscription()
+  resetSessionEventTracking()
   st.session = session
   st.currentSessionId = session.sessionId
+  st.currentRunId = ''
+  st.currentTurnId = ''
+  st.agentTurnActive = false
+  st.promptPreflightActive = false
   try {
     const cwd = session.sessionManager?.getCwd?.()
     if (typeof cwd === 'string' && cwd.length > 0) st.currentCwd = cwd
@@ -153,6 +168,7 @@ function wireRuntimeCallbacks(runtime: AgentSessionRuntime): void {
   runtime.setBeforeSessionInvalidate(() => {
     detachSessionSubscription()
     st.agentTurnActive = false
+    st.promptPreflightActive = false
   })
   runtime.setRebindSession(async (session) => {
     await rebindAfterRuntimeReplace(session)
@@ -162,6 +178,7 @@ function wireRuntimeCallbacks(runtime: AgentSessionRuntime): void {
 async function disposeRuntimeOrSession(): Promise<void> {
   detachSessionSubscription()
   st.agentTurnActive = false
+  st.promptPreflightActive = false
   if (st.runtime) {
     try {
       st.runtime.setRebindSession(undefined)
@@ -383,6 +400,9 @@ function sessionEventDeps() {
     isAgentTurnActive: () => st.agentTurnActive,
     setAgentTurnActive: (v: boolean) => {
       st.agentTurnActive = v
+    },
+    setPromptPreflightActive: (value: boolean) => {
+      st.promptPreflightActive = value
     },
     setCurrentRunId: (id: string) => {
       st.currentRunId = id

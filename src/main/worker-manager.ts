@@ -32,7 +32,11 @@ import { normalizeSessionKey, workspacePoolKey } from './worker-session-key'
 import { readMaxSessionWorkers } from './worker-pool-config'
 import { configStore } from './config-store'
 import { readSessionMetaFromFile } from './session-file-meta'
-import { getSessionLeafOverride } from './session-leaf-override'
+import {
+  applySettledRunToSessionLeafOverride,
+  getSessionLeafOverride,
+  setSessionLeafOverride,
+} from './session-leaf-override'
 
 interface InitResult extends WorkerInitResult {}
 
@@ -269,6 +273,7 @@ export class WorkerManager {
       if (sessionFile && !base.sessionFile) base.sessionFile = sessionFile
       enriched = base as unknown as AppEvent
     }
+    applySettledRunToSessionLeafOverride(enriched)
     if (!this.mainWindow || this.mainWindow.isDestroyed()) return
     this.mainWindow.webContents.send('ipc:events', enriched)
     void agentTurnActive
@@ -433,10 +438,16 @@ export class WorkerManager {
     return { steering: (r.steering as string[]) || [], followUp: (r.followUp as string[]) || [] }
   }
   async setModel(provider: string, modelId: string, sessionFile?: string): Promise<void> {
-    await this.request('setModel', { provider, modelId, sessionFile })
+    const response = await this.request('setModel', { provider, modelId, sessionFile })
+    if (sessionFile && response.leafId !== undefined) {
+      setSessionLeafOverride(sessionFile, response.leafId as string | null)
+    }
   }
   async setThinkingLevel(level: string, sessionFile?: string): Promise<void> {
-    await this.request('setThinkingLevel', { level, sessionFile })
+    const response = await this.request('setThinkingLevel', { level, sessionFile })
+    if (sessionFile && response.leafId !== undefined) {
+      setSessionLeafOverride(sessionFile, response.leafId as string | null)
+    }
   }
   async newSession(): Promise<{ sessionId: string; sessionFile?: string }> {
     const r = await this.request('newSession')
@@ -618,8 +629,10 @@ export class WorkerManager {
     const payload: Record<string, unknown> = { sessionFile, offset, limit }
     if (leafId !== undefined) payload.leafId = leafId
     const r = await this.request('getMessages', payload)
+    const items = (r.items as WorkerMessagesPage['items']) || []
     return {
-      items: (r.items as WorkerMessagesPage['items']) || [],
+      items,
+      sourceCount: typeof r.sourceCount === 'number' ? r.sourceCount : items.length,
       totalCount:
         typeof r.totalCount === 'number'
           ? r.totalCount

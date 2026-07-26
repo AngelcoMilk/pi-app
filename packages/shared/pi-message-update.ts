@@ -30,15 +30,23 @@ export function assistantStreamDeltaFromMessageUpdate(
   if (message?.role === 'assistant') {
     const text = extractTextFromPiMessage(message)
     const thinking = extractThinkingFromPiMessage(message)
-    if (text) out.text = text
-    if (thinking) out.thinking = thinking
+    if (text) {
+      out.text = text
+      out.textSource = 'snapshot'
+    }
+    if (thinking) {
+      out.thinking = thinking
+      out.thinkingSource = 'snapshot'
+    }
   }
 
   if (!out.text && ame) {
     if (ame.type === 'text_delta' && typeof ame.delta === 'string' && ame.delta) {
       out.text = ame.delta
+      out.textSource = 'delta'
     } else if (ame.type === 'text_end' && typeof ame.content === 'string' && ame.content) {
       out.text = ame.content
+      out.textSource = 'snapshot'
     }
     // Do not map toolcall_delta / toolcall_* .delta into assistant prose (raw JSON in bubble).
   }
@@ -46,8 +54,10 @@ export function assistantStreamDeltaFromMessageUpdate(
   if (!out.thinking && ame) {
     if (ame.type === 'thinking_delta' && typeof ame.delta === 'string' && ame.delta) {
       out.thinking = ame.delta
+      out.thinkingSource = 'delta'
     } else if (ame.type === 'thinking_end' && typeof ame.content === 'string' && ame.content) {
       out.thinking = ame.content
+      out.thinkingSource = 'snapshot'
     }
   }
 

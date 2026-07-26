@@ -2,8 +2,10 @@ import { agentErrorKind, formatAgentErrorForTimeline } from '@renderer/lib/agent
 import { markStreamingAssistantIncomplete } from '@renderer/lib/mark-streaming-incomplete'
 import type { UIState } from '@renderer/stores/ui-store-types'
 import type { AgentErrorEvent, StoreApi } from '@renderer/stores/apply-app-event-types'
+import { flushStreamPendingSync } from '@renderer/stores/ui-store-stream'
 
 export function handleAgentError(event: AgentErrorEvent, api: StoreApi): void {
+  flushStreamPendingSync(api.get, api.set)
   const state = api.get()
   const raw = event.text || '未知错误'
   const kind = event.kind || agentErrorKind(raw)

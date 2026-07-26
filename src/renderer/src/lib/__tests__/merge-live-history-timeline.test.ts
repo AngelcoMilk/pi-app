@@ -75,4 +75,88 @@ describe('mergeLiveTimelineWithHistoryTail', () => {
     const merged = mergeLiveTimelineWithHistoryTail(hist, live)
     expect(merged.filter((i) => i.type === 'user-message')).toHaveLength(1)
   })
+
+  it('does_not_align_identical_user_text_when_entry_ids_differ', () => {
+    const hist: TimelineItem[] = [
+      {
+        id: 'h1',
+        type: 'user-message',
+        text: 'continue',
+        timestamp: 1,
+        sessionEntryId: 'entry-history',
+      },
+      { id: 'h2', type: 'assistant-message', text: 'history answer', timestamp: 2 },
+    ]
+    const live: TimelineItem[] = [
+      {
+        id: 'l1',
+        type: 'user-message',
+        text: 'continue',
+        timestamp: 3,
+        sessionEntryId: 'entry-live',
+      },
+      { id: 'l2', type: 'assistant-message', text: 'live answer', timestamp: 4 },
+    ]
+
+    const merged = mergeLiveTimelineWithHistoryTail(hist, live)
+
+    expect(merged.map((item) => item.id)).toEqual(['h1', 'h2'])
+  })
+
+  it('keeps_adjacent_identical_user_text_when_entry_ids_differ', () => {
+    const hist: TimelineItem[] = [
+      {
+        id: 'h1',
+        type: 'user-message',
+        text: 'continue',
+        timestamp: 1,
+        sessionEntryId: 'entry-1',
+      },
+      {
+        id: 'h2',
+        type: 'user-message',
+        text: 'continue',
+        timestamp: 2,
+        sessionEntryId: 'entry-2',
+      },
+    ]
+
+    const merged = mergeLiveTimelineWithHistoryTail(hist, [])
+
+    expect(merged).toHaveLength(2)
+    expect(merged.map((item) => item.sessionEntryId)).toEqual(['entry-1', 'entry-2'])
+  })
+
+  it('keeps multi-turn order: hist prefix + live streaming tail after same last user', () => {
+    const hist: TimelineItem[] = [
+      { id: 'h1', type: 'user-message', text: 'q1', timestamp: 1, sessionEntryId: 'u1' },
+      { id: 'h2', type: 'assistant-message', text: 'a1', timestamp: 2, sessionEntryId: 'a1' },
+      { id: 'h3', type: 'user-message', text: 'q2', timestamp: 3, sessionEntryId: 'u2' },
+      { id: 'h4', type: 'assistant-message', text: 'a2 partial', timestamp: 4, sessionEntryId: 'a2' },
+    ]
+    const live: TimelineItem[] = [
+      { id: 'l3', type: 'user-message', text: 'q2', timestamp: 3, sessionEntryId: 'u2' },
+      {
+        id: 't1',
+        type: 'tool-call',
+        toolCallId: 'tc1',
+        toolName: 'bash',
+        toolPhase: 'end',
+        timestamp: 5,
+      },
+      { id: 'l4', type: 'assistant-message', text: 'a2 full after tool', timestamp: 6 },
+    ]
+    const merged = mergeLiveTimelineWithHistoryTail(hist, live)
+    expect(merged.map((i) => i.type)).toEqual([
+      'user-message',
+      'assistant-message',
+      'user-message',
+      'tool-call',
+      'assistant-message',
+    ])
+    expect(merged[0].text).toBe('q1')
+    expect(merged[1].text).toBe('a1')
+    expect(merged[2].text).toBe('q2')
+    expect(merged.at(-1)?.text).toBe('a2 full after tool')
+  })
 })

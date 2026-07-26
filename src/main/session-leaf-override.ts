@@ -1,3 +1,4 @@
+import type { AppEvent } from '@shared/app-events'
 import { normalizeSessionKey } from './worker-session-key'
 
 /**
@@ -37,4 +38,17 @@ export function clearSessionLeafOverride(sessionFile?: string | null): void {
   }
   const key = normalizeSessionKey(sessionFile)
   if (key) leafBySession.delete(key)
+}
+
+/** Once the SDK reports a settled run, JSONL's latest persisted leaf is authoritative again. */
+export function applySettledRunToSessionLeafOverride(event: AppEvent): void {
+  if (
+    event.type !== 'run' ||
+    (event.phase !== 'idle' && event.phase !== 'failed' && event.phase !== 'cancelled') ||
+    event.settled !== true ||
+    !event.sessionFile
+  ) {
+    return
+  }
+  clearSessionLeafOverride(event.sessionFile)
 }

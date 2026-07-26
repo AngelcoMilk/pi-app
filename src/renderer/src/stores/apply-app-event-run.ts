@@ -3,6 +3,7 @@ import { isViewingWorkerBoundSession } from '@renderer/lib/session-worker-sync'
 import { signalDesktopAlert } from '@renderer/lib/desktop-alerts'
 import { alertTrace } from '@renderer/lib/alert-trace'
 import type { RunEvent, StoreApi } from '@renderer/stores/apply-app-event-types'
+import { flushStreamPendingSync } from '@renderer/stores/ui-store-stream'
 
 /**
  * Whether a run.idle should be ignored as "too early" (race before agent_start).
@@ -74,8 +75,9 @@ export function handleRun(event: RunEvent, api: StoreApi): void {
     }
     return
   }
-  if (event.phase === 'idle') {
-    alertTrace('run event idle', {
+  if (event.phase === 'idle' || event.phase === 'cancelled') {
+    flushStreamPendingSync(api.get, api.set)
+    alertTrace(`run event ${event.phase}`, {
       runId: event.runId,
       statusBefore: state.runState.status,
       startTime: state.runState.startTime,
@@ -110,7 +112,7 @@ export function handleRun(event: RunEvent, api: StoreApi): void {
     state.clearPendingQueue()
     state.pruneEmptyAssistantBubbles()
     void import('@renderer/lib/extension-ui-tool-sync').then((m) => m.reconcileAllStaleInteractiveToolRows())
-    if (wasActive && rs.startTime && durationMs != null && durationMs >= 800) {
+    if (event.phase === 'idle' && wasActive && rs.startTime && durationMs != null && durationMs >= 800) {
       const sec = Math.round(durationMs / 1000)
       alertTrace('run_idle alert fired', { durationMs, sec })
       void signalDesktopAlert('run_idle', {
@@ -121,6 +123,7 @@ export function handleRun(event: RunEvent, api: StoreApi): void {
     return
   }
   if (event.phase === 'failed') {
+    flushStreamPendingSync(api.get, api.set)
     state.setRunState({ status: 'failed' })
     const viewFile = state.historySessionFile
     const liveSnap = state.workerLiveSnapshot

@@ -10,17 +10,20 @@ export function stripOptimisticTimelineItems(items: TimelineItem[]): TimelineIte
   return items.filter((i) => !String(i.id).startsWith('opt-'))
 }
 
-/** 合并相邻、文案相同的用户消息（冷启动重复事件/历史叠加以致） */
+/** 仅合并同一持久化 entry，或仍带乐观占位标识的相邻重复用户消息。 */
 export function dedupeAdjacentUserMessages(items: TimelineItem[]): TimelineItem[] {
   const out: TimelineItem[] = []
   for (const it of items) {
     const prev = out[out.length - 1]
-    if (
-      it.type === 'user-message' &&
-      prev?.type === 'user-message' &&
-      normalizeTimelineMessageText(it.text) === normalizeTimelineMessageText(prev.text)
-    ) {
-      continue
+    if (it.type === 'user-message' && prev?.type === 'user-message') {
+      const sameEntryId =
+        !!it.sessionEntryId &&
+        !!prev.sessionEntryId &&
+        it.sessionEntryId === prev.sessionEntryId
+      const optimisticDuplicate =
+        (it.id.startsWith('opt-user-') || prev.id.startsWith('opt-user-')) &&
+        normalizeTimelineMessageText(it.text) === normalizeTimelineMessageText(prev.text)
+      if (sameEntryId || optimisticDuplicate) continue
     }
     out.push(it)
   }

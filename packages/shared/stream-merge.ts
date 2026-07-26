@@ -28,7 +28,7 @@ export function takeStreamUpdate(
   if (source === 'delta') {
     return {
       chunk: update,
-      cumulative: mergeStreamChunk(previous, update),
+      cumulative: previous + update,
     }
   }
 

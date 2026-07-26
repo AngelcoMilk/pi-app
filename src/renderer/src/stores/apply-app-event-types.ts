@@ -3,7 +3,9 @@ import type { UIState } from '@renderer/stores/ui-store-types'
 
 export type StoreApi = {
   get: () => UIState
-  set: (partial: Partial<UIState> | Record<string, unknown>) => void
+  set: (
+    update: Partial<UIState> | UIState | ((state: UIState) => Partial<UIState> | UIState),
+  ) => void
   nextItemId: () => string
 }
 

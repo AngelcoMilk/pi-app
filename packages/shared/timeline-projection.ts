@@ -1,7 +1,18 @@
 import type { ProjectableTimelineItem } from './timeline-projection-types'
 
+/**
+ * Whether two adjacent assistant rows belong to the same agent turn and may be
+ * concatenated. Missing runId used to mean "always merge", which glued separate
+ * turns together after session switch-back (user/assistant misalignment).
+ */
 function sameRun(a: ProjectableTimelineItem, b: ProjectableTimelineItem): boolean {
   if (a.runId && b.runId) return a.runId === b.runId
+  // Different explicit runs must never merge (one side missing is not "same").
+  if (a.runId || b.runId) return false
+  // Disk rows with distinct JSONL entry ids are separate messages.
+  if (a.sessionEntryId && b.sessionEntryId) return a.sessionEntryId === b.sessionEntryId
+  if (a.sessionEntryId || b.sessionEntryId) return false
+  // Pure stream fragments without identity: allow adjacent collapse.
   return true
 }
 

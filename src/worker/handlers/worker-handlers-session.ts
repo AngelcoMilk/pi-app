@@ -453,7 +453,12 @@ export async function handleGetmessages(msg: WorkerIncomingMessage, reply: Worke
             )
             return { ...row, toolDetail: detail }
           })
-          reply({ type: 'getMessages-done', ...page, items })
+          reply({
+            type: 'getMessages-done',
+            ...page,
+            sourceCount: page.items.length,
+            items,
+          })
         } catch (e: unknown) {
           reply({ type: 'error', error: sessionTimelineError(e) })
         }

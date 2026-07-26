@@ -1,6 +1,6 @@
 import { mergeLiveCacheTimelineSnapshots } from '@renderer/lib/streaming-timeline-preserve'
 import { normalizeSessionFileKey } from '@renderer/lib/session-file-key'
-import { mergeStreamChunk } from '@renderer/stores/ui-store-stream'
+import { normalizeTimelineMessageText } from '@renderer/lib/timeline-dedupe'
 import type { AppEvent } from '@shared/app-events'
 import type { RunState, TimelineItem } from '@renderer/stores/ui-store-types'
 
@@ -43,14 +43,16 @@ export function saveLiveSessionTimeline(snapshot: LiveSessionTimelineSnapshot): 
     snapshot.streamingAssistantId !== undefined
       ? snapshot.streamingAssistantId
       : (prev?.streamingAssistantId ?? null)
-  liveTimelines.set(key, {
+  const nextSnapshot: LiveSessionTimelineSnapshot = {
     ...snapshot,
     sessionFile: key,
     timelineItems,
     streamingAssistantId: nextStreamingId,
     pendingSteering: [...snapshot.pendingSteering],
     pendingFollowUp: [...snapshot.pendingFollowUp],
-  })
+  }
+  trimBackgroundLiveItems(nextSnapshot)
+  liveTimelines.set(key, nextSnapshot)
 }
 
 export function getLiveSessionTimeline(sessionFile: string): LiveSessionTimelineSnapshot | null {
@@ -116,18 +118,12 @@ function applyAssistantDeltaToSnap(
   let nextThinking = current.thinkingText || ''
   let changed = false
   if (textDelta) {
-    const merged = mergeStreamChunk(nextText, textDelta)
-    if (merged !== nextText) {
-      nextText = merged
-      changed = true
-    }
+    nextText += textDelta
+    changed = true
   }
   if (thinkingDelta) {
-    const merged = mergeStreamChunk(nextThinking, thinkingDelta)
-    if (merged !== nextThinking) {
-      nextThinking = merged
-      changed = true
-    }
+    nextThinking += thinkingDelta
+    changed = true
   }
   if (!changed) return
   // In-place update for the single streaming row — avoid full-array map each token.
@@ -195,9 +191,9 @@ function queueBackgroundAssistantDelta(
     backgroundDeltaPending.set(sessionFileKey, row)
   }
   if (event.contentKind === 'thinking') {
-    row.thinking = mergeStreamChunk(row.thinking, event.text || '')
+    row.thinking += event.text || ''
   } else {
-    row.text = mergeStreamChunk(row.text, event.text || '')
+    row.text += event.text || ''
   }
   scheduleBackgroundDeltaFlush()
 }
@@ -237,19 +233,62 @@ function applyMessage(
     }
   }
 
+  if (event.role === 'user' && event.phase === 'start') {
+    const incomingText = normalizeTimelineMessageText(event.text)
+    const optimisticText = normalizeTimelineMessageText(
+      snap.optimisticPendingUserText ?? undefined,
+    )
+    let lastUserIndex = -1
+    for (let itemIndex = snap.timelineItems.length - 1; itemIndex >= 0; itemIndex--) {
+      if (snap.timelineItems[itemIndex].type === 'user-message') {
+        lastUserIndex = itemIndex
+        break
+      }
+    }
+    const lastUser = lastUserIndex >= 0 ? snap.timelineItems[lastUserIndex] : undefined
+    const lastUserText = normalizeTimelineMessageText(lastUser?.text)
+    const matchesOptimistic =
+      !!lastUser && !!optimisticText && lastUserText === optimisticText
+
+    if (matchesOptimistic) {
+      snap.timelineItems[lastUserIndex] = {
+        ...lastUser,
+        text: incomingText ? event.text : lastUser.text,
+        runId: event.runId,
+        timestamp: event.timestamp,
+      }
+    } else {
+      snap.timelineItems.push({
+        id: nextCachedItemId(),
+        type: 'user-message',
+        text: event.text || '',
+        runId: event.runId,
+        timestamp: event.timestamp,
+      })
+    }
+    snap.optimisticPendingUserText = null
+    snap.agentTurnBootstrapping = false
+    return
+  }
+
   if (event.role === 'user' && event.phase === 'end' && event.sessionEntryId) {
-    for (let i = snap.timelineItems.length - 1; i >= 0; i--) {
-      const item = snap.timelineItems[i]
+    for (let itemIndex = snap.timelineItems.length - 1; itemIndex >= 0; itemIndex--) {
+      const item = snap.timelineItems[itemIndex]
       if (item.type === 'user-message' && !item.sessionEntryId) {
-        snap.timelineItems[i] = { ...item, sessionEntryId: event.sessionEntryId }
+        snap.timelineItems[itemIndex] = { ...item, sessionEntryId: event.sessionEntryId }
         break
       }
     }
   }
 }
 
-function applyTool(snap: LiveSessionTimelineSnapshot, event: Extract<AppEvent, { type: 'tool' }>): void {
+function applyTool(
+  snap: LiveSessionTimelineSnapshot,
+  event: Extract<AppEvent, { type: 'tool' }>,
+  sessionFileKey: string,
+): void {
   if (event.phase === 'start') {
+    flushBackgroundLiveDeltasSync(sessionFileKey)
     snap.streamingAssistantId = null
     snap.timelineItems.push({
       id: nextCachedItemId(),
@@ -328,7 +367,7 @@ export function applyBackgroundAppEventToLiveTimeline(sessionFile: string, event
     if (event.phase !== 'delta') trimBackgroundLiveItems(snap)
     return
   }
-  if (event.type === 'tool') applyTool(snap, event)
+  if (event.type === 'tool') applyTool(snap, event, key)
   else if (event.type === 'queue') {
     snap.pendingSteering = [...event.steering]
     snap.pendingFollowUp = [...event.followUp]

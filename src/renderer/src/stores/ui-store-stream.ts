@@ -1,4 +1,3 @@
-import { mergeStreamChunk } from '@shared/stream-merge'
 import type { TimelineItem } from '@renderer/stores/ui-store-types'
 
 export { mergeStreamChunk } from '@shared/stream-merge'
@@ -38,18 +37,12 @@ export function flushStreamPendingSync<S extends StreamStore>(
     let nextThinking = current.thinkingText || ''
     let changed = false
     if (textDelta) {
-      const merged = mergeStreamChunk(nextText, textDelta)
-      if (merged !== nextText) {
-        nextText = merged
-        changed = true
-      }
+      nextText += textDelta
+      changed = true
     }
     if (thinkDelta) {
-      const merged = mergeStreamChunk(nextThinking, thinkDelta)
-      if (merged !== nextThinking) {
-        nextThinking = merged
-        changed = true
-      }
+      nextThinking += thinkDelta
+      changed = true
     }
     if (!changed) return s
     // Copy once and patch the streaming row — avoid dual full-array maps per flush.
@@ -81,8 +74,8 @@ export function queueStreamDelta<S extends StreamStore>(
     row = { text: '', thinking: '' }
     streamPending.set(sid, row)
   }
-  if (kind === 'text') row.text = mergeStreamChunk(row.text, delta)
-  else row.thinking = mergeStreamChunk(row.thinking, delta)
+  if (kind === 'text') row.text += delta
+  else row.thinking += delta
   scheduleStreamFlush(get, set)
 }
 

@@ -48,7 +48,7 @@ export async function loadSessionHistoryWithRetry(
 
   clearSessionHistoryCache(sessionFile)
 
-  let last: GetMessagesResult = { items: [], totalCount: 0 }
+  let last: GetMessagesResult = { items: [], sourceCount: 0, totalCount: 0 }
 
   for (let attempt = 0; attempt < RETRY_DELAYS_MS.length; attempt++) {
     checkNav(opts?.navToken)

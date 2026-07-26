@@ -18,7 +18,9 @@ function lastUserIndex(items: TimelineItem[]): number {
 
 function usersMatch(a: TimelineItem, b: TimelineItem): boolean {
   if (a.type !== 'user-message' || b.type !== 'user-message') return false
-  if (a.sessionEntryId && b.sessionEntryId && a.sessionEntryId === b.sessionEntryId) return true
+  if (a.sessionEntryId && b.sessionEntryId) {
+    return a.sessionEntryId === b.sessionEntryId
+  }
   return normalizeTimelineMessageText(a.text) === normalizeTimelineMessageText(b.text)
 }
 
@@ -134,8 +136,16 @@ export function mergeLiveTimelineWithHistoryTail(
     return dedupeAdjacentUserMessages([...hist.slice(0, -1), ...live])
   }
 
-  // live 明显是超集（capture 整页）
+  // live 明显是超集（capture 整页）。若两侧最后用户都有持久化 identity 且冲突，
+  // 说明它们不是同一轮，不能用 live 覆盖磁盘权威历史。
+  const persistedLastUsersConflict =
+    histUserIdx >= 0 &&
+    liveUserIdx >= 0 &&
+    !!hist[histUserIdx].sessionEntryId &&
+    !!live[liveUserIdx].sessionEntryId &&
+    hist[histUserIdx].sessionEntryId !== live[liveUserIdx].sessionEntryId
   if (
+    !persistedLastUsersConflict &&
     live.length >= hist.length &&
     countByType(live, 'user-message') >= countByType(hist, 'user-message')
   ) {

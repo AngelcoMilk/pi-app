@@ -51,6 +51,7 @@ export type WorkerCompletionItem = Record<string, unknown>
 
 export type WorkerMessagesPage = {
   items: PiSessionMessage[]
+  sourceCount: number
   totalCount: number
   sessionMeta?: { model?: string; thinkingLevel?: string }
 }

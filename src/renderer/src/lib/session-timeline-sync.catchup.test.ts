@@ -41,4 +41,34 @@ describe('loadAuthoritativeForOpen catch-up', () => {
     expect(r.cursor.loadedOffsetFromEnd).toBe(150)
     expect(invoke.mock.calls.length).toBeGreaterThanOrEqual(2)
   })
+
+  it('should_advance_raw_offset_when_projection_collapses_rows', async () => {
+    const requests: number[] = []
+    invoke.mockImplementation(async (_channel: string, request: { offset?: number }) => {
+      const offset = request.offset ?? 0
+      requests.push(offset)
+      if (offset === 0) {
+        return {
+          items: [
+            { id: 'assistant-fragment-1', type: 'assistant-message', text: 'Hel', timestamp: 3 },
+            { id: 'assistant-fragment-2', type: 'assistant-message', text: 'lo', timestamp: 4 },
+          ],
+          totalCount: 4,
+        }
+      }
+      if (offset === 2) {
+        return {
+          items: [item('older-1'), item('older-2')],
+          totalCount: 4,
+        }
+      }
+      return { items: [], totalCount: 4 }
+    })
+
+    const { loadAuthoritativeForOpen } = await import('./session-timeline-sync')
+    const result = await loadAuthoritativeForOpen('/collapsed.jsonl', 2)
+
+    expect(requests).toEqual([0, 2])
+    expect(result.cursor.loadedOffsetFromEnd).toBe(4)
+  })
 })

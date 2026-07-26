@@ -185,8 +185,8 @@ export function captureFocusFromUiStore(): void {
     sessionKey,
     sessionId: latest.currentSessionId,
     items,
-    historyTotal: Math.max(latest.historyTotalCount, items.length, prev?.historyTotal ?? 0),
-    historyLoaded: Math.max(latest.historyLoadedCount, items.length, prev?.historyLoaded ?? 0),
+    historyTotal: Math.max(latest.historyTotalCount, prev?.historyTotal ?? 0),
+    historyLoaded: Math.max(latest.historyLoadedCount, prev?.historyLoaded ?? 0),
     runUI,
     streamingAssistantId: latest.streamingAssistantId,
     optimisticPendingUserText: latest.optimisticPendingUserText,
@@ -280,7 +280,9 @@ export function bindViewToUiStore(view: SessionView): void {
 
 function mergeLiveIntoItems(sessionKey: string, diskItems: TimelineItem[]): TimelineItem[] {
   const live = getLiveSessionTimeline(sessionKey)
-  if (!live || live.timelineItems.length === 0) return diskItems
+  if (!live || live.timelineItems.length === 0) {
+    return projectTimelineItems(diskItems) as TimelineItem[]
+  }
   let merged = mergeLiveTimelineWithHistoryTail(diskItems, live.timelineItems)
   merged = applyLiveStreamingTextToMergedTimeline(
     merged,
@@ -288,6 +290,22 @@ function mergeLiveIntoItems(sessionKey: string, diskItems: TimelineItem[]): Time
     live.streamingAssistantId,
   )
   return projectTimelineItems(merged) as TimelineItem[]
+}
+
+/** Prefer the timeline that keeps more user turns and structure (anti misalignment). */
+function pickRicherTimeline(a: TimelineItem[], b: TimelineItem[]): TimelineItem[] {
+  const score = (items: TimelineItem[]) => {
+    const users = items.reduce((n, item) => (item.type === 'user-message' ? n + 1 : n), 0)
+    const asstChars = items.reduce(
+      (n, item) =>
+        item.type === 'assistant-message'
+          ? n + (item.text?.length ?? 0) + (item.thinkingText?.length ?? 0)
+          : n,
+      0,
+    )
+    return users * 1_000_000_000 + items.length * 1_000_000 + asstChars
+  }
+  return score(a) >= score(b) ? a : b
 }
 
 /**
@@ -313,7 +331,7 @@ export function focusSessionSync(sessionId: string, sessionFile: string): {
       sessionId: sessionId ?? view.sessionId,
       lastFocusedAt: Date.now(),
     }
-    // Refresh runUI from current runtime map + live cache (session may still be streaming).
+    // Refresh runUI + re-merge live stream so switch-back does not paint stale order.
     const runtime = useUIStore.getState().sessionRuntimeRunning ?? {}
     const live = getLiveSessionTimeline(sessionKey)
     const runtimeRunning =
@@ -324,9 +342,12 @@ export function focusSessionSync(sessionId: string, sessionFile: string): {
       live?.streamingAssistantId != null ||
       live?.optimisticPendingUserText != null ||
       live?.agentTurnBootstrapping === true
+    const remixedItems =
+      view.items.length > 0 ? mergeLiveIntoItems(sessionKey, view.items) : view.items
     if (runtimeRunning || liveRunning || view.runUI === 'running') {
       view = {
         ...view,
+        items: remixedItems,
         runUI: 'running',
         streamingAssistantId: view.streamingAssistantId ?? live?.streamingAssistantId ?? null,
         optimisticPendingUserText:
@@ -343,7 +364,7 @@ export function focusSessionSync(sessionId: string, sessionFile: string): {
         workerSessionFile: sessionKey,
         workerStatus: 'idle',
       })
-      view = { ...view, runUI: resolved }
+      view = { ...view, items: remixedItems, runUI: resolved }
     }
     views.set(sessionKey, view)
   }
@@ -434,8 +455,8 @@ export async function hydrateSessionView(
           sessionKey,
           sessionId: sessionId ?? existing?.sessionId ?? null,
           items: cloneItems(prefer),
-          historyTotal: Math.max(hist.totalCount, prefer.length, existing?.historyTotal ?? 0),
-          historyLoaded: Math.max(prefer.length, existing?.historyLoaded ?? 0),
+          historyTotal: Math.max(hist.totalCount, existing?.historyTotal ?? 0),
+          historyLoaded: Math.max(hist.sourceCount, existing?.historyLoaded ?? 0),
           runUI,
           streamingAssistantId: live?.streamingAssistantId ?? existing?.streamingAssistantId ?? null,
           optimisticPendingUserText:
@@ -481,16 +502,14 @@ export async function hydrateSessionView(
     let merged = mergeLiveIntoItems(sessionKey, projected)
     // Mid-stream disk is often shorter than the live capture we just left —
     // never replace a richer in-memory timeline with a thinner disk snapshot.
+    // Always re-merge through live (never assign raw priorItems alone — drops tools / misorders).
     if (
       priorItems.length > 0 &&
       (timelineItemTextScore(priorItems) > timelineItemTextScore(merged) ||
         priorItems.length > merged.length)
     ) {
-      merged = mergeLiveIntoItems(sessionKey, priorItems)
-      // Still prefer disk prefix + live tail if merge of disk already applied above failed richness
-      if (timelineItemTextScore(priorItems) >= timelineItemTextScore(merged)) {
-        merged = priorItems
-      }
+      const fromPrior = mergeLiveIntoItems(sessionKey, priorItems)
+      merged = pickRicherTimeline(fromPrior, merged)
     }
 
     const live = getLiveSessionTimeline(sessionKey)
@@ -535,8 +554,8 @@ export async function hydrateSessionView(
       sessionKey,
       sessionId: sessionId ?? existing?.sessionId ?? null,
       items: cloneItems(merged),
-      historyTotal: Math.max(hist.totalCount, merged.length),
-      historyLoaded: Math.min(Math.max(hist.totalCount, merged.length), Math.max(merged.length, projected.length)),
+      historyTotal: hist.totalCount,
+      historyLoaded: Math.min(hist.totalCount, hist.sourceCount),
       runUI: finalRunUI,
       streamingAssistantId: live?.streamingAssistantId ?? existing?.streamingAssistantId ?? null,
       optimisticPendingUserText:

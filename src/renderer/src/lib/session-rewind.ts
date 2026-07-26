@@ -58,10 +58,7 @@ export async function navigateSessionToEntry(targetId: string): Promise<boolean>
       return false
     }
 
-    const leafId =
-      r?.leafId !== undefined && r.leafId !== null && String(r.leafId).length > 0
-        ? r.leafId
-        : targetId
+    const leafId = r?.leafId !== undefined ? r.leafId : targetId
 
     const editorText = typeof r?.editorText === 'string' ? r.editorText : ''
     if (editorText) st.setComposerPrefill(editorText)
@@ -121,12 +118,12 @@ export async function navigateSessionToEntry(targetId: string): Promise<boolean>
         const { sanitizeHistoryTimeline } = await import('@renderer/lib/timeline-dedupe')
         const items = sanitizeHistoryTimeline((disk.items || []) as TimelineItem[])
         st.loadHistoryItems(items)
-        st.setHistoryMeta(disk.totalCount ?? items.length, items.length, file)
+        st.setHistoryMeta(disk.totalCount ?? disk.sourceCount, disk.sourceCount, file)
       } else {
         const { sanitizeHistoryTimeline } = await import('@renderer/lib/timeline-dedupe')
         const items = sanitizeHistoryTimeline((hist.items || []) as TimelineItem[])
         st.loadHistoryItems(items)
-        st.setHistoryMeta(hist.totalCount ?? items.length, items.length, file)
+        st.setHistoryMeta(hist.totalCount ?? hist.sourceCount, hist.sourceCount, file)
       }
 
       st.setHistoryLoading(false)

@@ -11,23 +11,39 @@ export async function prependOlderTimelinePage(
   sessionFile: string,
   offset: number,
   limit = SESSION_HISTORY_PAGE,
-): Promise<{ items: TimelineItem[]; totalCount: number; error?: string }> {
+): Promise<{ items: TimelineItem[]; sourceCount: number; totalCount: number; error?: string }> {
   const page = await fetchTimelineHistoryPage(sessionFile, offset, limit)
-  if (page.error) return { items: [], totalCount: page.totalCount, error: page.error }
-  if (page.items.length === 0) return { items: [], totalCount: page.totalCount }
+  if (page.error) {
+    return {
+      items: [],
+      sourceCount: 0,
+      totalCount: page.totalCount,
+      error: page.error,
+    }
+  }
 
   const store = useUIStore.getState()
-  const view = getSessionTimelineView(sessionFile)
-  const prevHead = view?.head ?? []
-  patchSessionTimelineView(sessionFile, { head: [...page.items, ...prevHead] })
+  if (page.items.length > 0) {
+    const view = getSessionTimelineView(sessionFile)
+    const previousHead = view?.head ?? []
+    patchSessionTimelineView(sessionFile, { head: [...page.items, ...previousHead] })
 
-  const merged = sanitizeHistoryTimeline([...page.items, ...store.timelineItems])
-  const displayed = projectTimelineItems(merged) as TimelineItem[]
+    const merged = sanitizeHistoryTimeline([...page.items, ...store.timelineItems])
+    const displayed = projectTimelineItems(merged) as TimelineItem[]
+    useUIStore.setState({ timelineItems: displayed })
+  }
+
   useUIStore.setState({
-    timelineItems: displayed,
-    historyLoadedCount: store.historyLoadedCount + page.items.length,
+    historyLoadedCount: Math.min(
+      Math.max(store.historyTotalCount, page.totalCount),
+      store.historyLoadedCount + page.sourceCount,
+    ),
     historyTotalCount: Math.max(store.historyTotalCount, page.totalCount),
   })
 
-  return { items: page.items, totalCount: page.totalCount }
+  return {
+    items: page.items,
+    sourceCount: page.sourceCount,
+    totalCount: page.totalCount,
+  }
 }

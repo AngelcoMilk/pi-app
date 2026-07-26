@@ -11,6 +11,7 @@ import { sanitizeHistoryTimeline } from '@renderer/lib/timeline-dedupe'
 
 export type HistoryPage = {
   items: TimelineItem[]
+  sourceCount: number
   totalCount: number
   error?: string
 }
@@ -26,10 +27,19 @@ export async function fetchTimelineHistoryPage(
 async function fetchPage(sessionFile: string, offset: number, limit: number): Promise<HistoryPage> {
   const res = await ipcClient.invoke('session.getMessages', { sessionFile, offset, limit })
   const err = (res as { error?: string })?.error
-  if (err) return { items: [], totalCount: 0, error: err }
-  const items = sanitizeHistoryTimeline((res?.items || []) as TimelineItem[])
-  const totalCount = typeof res?.totalCount === 'number' ? res.totalCount : items.length
-  return { items: projectTimelineItems(items) as TimelineItem[], totalCount }
+  if (err) return { items: [], sourceCount: 0, totalCount: 0, error: err }
+  const sourceItems = (res?.items || []) as TimelineItem[]
+  const sourceCount =
+    typeof (res as { sourceCount?: number })?.sourceCount === 'number'
+      ? (res as { sourceCount: number }).sourceCount
+      : sourceItems.length
+  const items = sanitizeHistoryTimeline(sourceItems)
+  const totalCount = typeof res?.totalCount === 'number' ? res.totalCount : sourceCount
+  return {
+    items: projectTimelineItems(items) as TimelineItem[],
+    sourceCount,
+    totalCount,
+  }
 }
 
 export function lastSessionEntryId(items: TimelineItem[]): string | null {
@@ -49,7 +59,7 @@ export async function syncAuthoritativeTail(sessionFile: string, limit = TIMELIN
   const tail = page.items
   const cursor: TimelineSyncCursor = {
     totalCount: page.totalCount,
-    loadedOffsetFromEnd: Math.min(page.totalCount, tail.length),
+    loadedOffsetFromEnd: Math.min(page.totalCount, page.sourceCount),
     loadedThroughEntryId: lastSessionEntryId(tail),
   }
   return { tail, cursor }
@@ -60,17 +70,20 @@ export async function catchUpAuthoritativeAfter(
   sessionFile: string,
   cursor: TimelineSyncCursor,
   limit = TIMELINE_FETCH_PAGE_SIZE,
+  initialTail?: TimelineItem[],
 ): Promise<{ tail: TimelineItem[]; cursor: TimelineSyncCursor; error?: string }> {
   let totalCount = cursor.totalCount
   let loadedOffset = cursor.loadedOffsetFromEnd
-  let tail: TimelineItem[] = []
+  let tail: TimelineItem[] = initialTail ? [...initialTail] : []
   let error: string | undefined
 
-  const boot = await fetchPage(sessionFile, 0, Math.max(limit, loadedOffset || limit))
-  if (boot.error) return { tail: [], cursor, error: boot.error }
-  totalCount = boot.totalCount
-  tail = boot.items
-  loadedOffset = tail.length
+  if (!initialTail) {
+    const boot = await fetchPage(sessionFile, 0, Math.max(limit, loadedOffset || limit))
+    if (boot.error) return { tail: [], cursor, error: boot.error }
+    totalCount = boot.totalCount
+    tail = boot.items
+    loadedOffset = boot.sourceCount
+  }
 
   for (let guard = 0; guard < 32; guard++) {
     if (isTimelineCatchUpComplete({ totalCount, loadedOffsetFromEnd: loadedOffset, error })) break
@@ -80,9 +93,9 @@ export async function catchUpAuthoritativeAfter(
       break
     }
     totalCount = Math.max(totalCount, page.totalCount)
-    if (page.items.length === 0) break
+    if (page.sourceCount === 0) break
     tail = [...page.items, ...tail]
-    loadedOffset += page.items.length
+    loadedOffset += page.sourceCount
   }
 
   return {
@@ -105,7 +118,12 @@ export async function loadAuthoritativeForOpen(
   if (isTimelineCatchUpComplete(initial.cursor)) {
     return { items: initial.tail, totalCount: initial.cursor.totalCount, cursor: initial.cursor }
   }
-  const caught = await catchUpAuthoritativeAfter(sessionFile, initial.cursor, pageSize)
+  const caught = await catchUpAuthoritativeAfter(
+    sessionFile,
+    initial.cursor,
+    pageSize,
+    initial.tail,
+  )
   return {
     items: caught.tail,
     totalCount: caught.cursor.totalCount,

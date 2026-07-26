@@ -2,6 +2,7 @@ import { ipcClient } from '@renderer/lib/ipc-client'
 
 export interface GetMessagesResult {
   items: unknown[]
+  sourceCount: number
   totalCount: number
   sessionMeta?: { model?: string; thinkingLevel?: string }
   error?: string
@@ -9,7 +10,13 @@ export interface GetMessagesResult {
 
 const sliceCache = new Map<
   string,
-  { totalCount: number; items: unknown[]; at: number; sessionMeta?: GetMessagesResult['sessionMeta'] }
+  {
+    sourceCount: number
+    totalCount: number
+    items: unknown[]
+    at: number
+    sessionMeta?: GetMessagesResult['sessionMeta']
+  }
 >()
 const SLICE_TTL_MS = 120_000
 const INITIAL_TAIL = 80
@@ -29,7 +36,12 @@ export async function fetchSessionHistoryTail(
   if (!opts?.bypassCache) {
     const hit = sliceCache.get(key)
     if (hit && Date.now() - hit.at < SLICE_TTL_MS) {
-      return { items: hit.items, totalCount: hit.totalCount, sessionMeta: hit.sessionMeta }
+      return {
+        items: hit.items,
+        sourceCount: hit.sourceCount,
+        totalCount: hit.totalCount,
+        sessionMeta: hit.sessionMeta,
+      }
     }
   }
   const res = await ipcClient.invoke('session.getMessages', {
@@ -39,16 +51,20 @@ export async function fetchSessionHistoryTail(
     ...(opts?.leafId !== undefined ? { leafId: opts.leafId } : {}),
   })
   const items = res?.items || []
-  const totalCount = typeof res?.totalCount === 'number' ? res.totalCount : items.length
+  const sourceCount =
+    typeof (res as { sourceCount?: number })?.sourceCount === 'number'
+      ? (res as { sourceCount: number }).sourceCount
+      : items.length
+  const totalCount = typeof res?.totalCount === 'number' ? res.totalCount : sourceCount
   const sessionMeta = res?.sessionMeta
   const err = (res as { error?: string })?.error
   if (err) {
-    return { items: [], totalCount: 0, sessionMeta, error: err }
+    return { items: [], sourceCount: 0, totalCount: 0, sessionMeta, error: err }
   }
-  if (items.length > 0 || totalCount > 0) {
-    sliceCache.set(key, { items, totalCount, at: Date.now(), sessionMeta })
+  if (sourceCount > 0 || totalCount > 0) {
+    sliceCache.set(key, { items, sourceCount, totalCount, at: Date.now(), sessionMeta })
   }
-  return { items, totalCount, sessionMeta }
+  return { items, sourceCount, totalCount, sessionMeta }
 }
 
 export async function fetchSessionHistoryOlder(
@@ -59,14 +75,18 @@ export async function fetchSessionHistoryOlder(
   const key = cacheKey(sessionFile, offset, limit)
   const hit = sliceCache.get(key)
   if (hit && Date.now() - hit.at < SLICE_TTL_MS) {
-    return { items: hit.items, totalCount: hit.totalCount }
+    return { items: hit.items, sourceCount: hit.sourceCount, totalCount: hit.totalCount }
   }
   const res = await ipcClient.invoke('session.getMessages', { sessionFile, offset, limit })
   const items = res?.items || []
-  const totalCount = typeof res?.totalCount === 'number' ? res.totalCount : items.length
+  const sourceCount =
+    typeof (res as { sourceCount?: number })?.sourceCount === 'number'
+      ? (res as { sourceCount: number }).sourceCount
+      : items.length
+  const totalCount = typeof res?.totalCount === 'number' ? res.totalCount : sourceCount
   const sessionMeta = res?.sessionMeta
-  sliceCache.set(key, { items, totalCount, at: Date.now() })
-  return { items, totalCount, sessionMeta }
+  sliceCache.set(key, { items, sourceCount, totalCount, at: Date.now() })
+  return { items, sourceCount, totalCount, sessionMeta }
 }
 
 export function clearSessionHistoryCache(sessionFile?: string): void {
@@ -91,11 +111,15 @@ export async function getSessionMessagesFromDiskViaIpc(
     ...(leafId !== undefined ? { leafId } : {}),
   })
   const items = res?.items || []
-  const totalCount = typeof res?.totalCount === 'number' ? res.totalCount : items.length
+  const sourceCount =
+    typeof (res as { sourceCount?: number })?.sourceCount === 'number'
+      ? (res as { sourceCount: number }).sourceCount
+      : items.length
+  const totalCount = typeof res?.totalCount === 'number' ? res.totalCount : sourceCount
   const sessionMeta = res?.sessionMeta
   const err = (res as { error?: string })?.error
-  if (err) return { items: [], totalCount: 0, sessionMeta, error: err }
-  return { items, totalCount, sessionMeta }
+  if (err) return { items: [], sourceCount: 0, totalCount: 0, sessionMeta, error: err }
+  return { items, sourceCount, totalCount, sessionMeta }
 }
 
 export const SESSION_HISTORY_PAGE = PAGE

@@ -26,7 +26,7 @@ export function mergeLiveActiveSessionDisplay(input: {
   )
   const displayed = projectTimelineItems(merged)
   const mergedStreamId = input.live.streamingAssistantId ?? lastAssistantItem(displayed)?.id ?? null
-  const totalCount = Math.max(input.totalCount, displayed.length, input.cursor.loadedOffsetFromEnd)
-  const historyLoadedCount = Math.min(totalCount, Math.max(displayed.length, input.cursor.loadedOffsetFromEnd))
+  const totalCount = Math.max(input.totalCount, input.cursor.totalCount)
+  const historyLoadedCount = Math.min(totalCount, input.cursor.loadedOffsetFromEnd)
   return { displayed, mergedStreamId, historyLoadedCount, totalCount }
 }

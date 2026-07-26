@@ -1,5 +1,6 @@
 import { normalizeTimelineMessageText } from '@renderer/lib/timeline-dedupe'
 import type { MessageEvent, StoreApi } from '@renderer/stores/apply-app-event-types'
+import { flushStreamPendingSync } from '@renderer/stores/ui-store-stream'
 
 export function handleMessage(event: MessageEvent, api: StoreApi): void {
   const state = api.get()
@@ -14,10 +15,8 @@ export function handleMessage(event: MessageEvent, api: StoreApi): void {
       const lastUser = [...items].reverse().find((i) => i.type === 'user-message')
       const lastNorm = lastUser ? normalizeTimelineMessageText(lastUser.text) : ''
       const optNorm = opt ? normalizeTimelineMessageText(opt) : ''
-      const matchesOpt =
-        !!lastUser && (lastUser.id.startsWith('opt-user-') || (optNorm && lastNorm === optNorm))
-      const matchesIncoming = !!lastUser && incoming && lastNorm === incoming
-      if (matchesOpt || matchesIncoming) {
+      const matchesOpt = !!lastUser && !!optNorm && lastNorm === optNorm
+      if (matchesOpt) {
         if (event.text?.trim()) {
           state.updateTimelineItem(lastUser!.id, {
             text: event.text,
@@ -106,6 +105,7 @@ export function handleMessage(event: MessageEvent, api: StoreApi): void {
     if (event.contentKind === 'thinking') state.appendThinkingDelta(event.text)
     else state.appendDeltaToStreamingAssistant(event.text)
   } else if (event.phase === 'end') {
+    flushStreamPendingSync(api.get, api.set)
     clearAgentTurnBootstrappingIfNeeded()
     const sid = api.get().streamingAssistantId
     const hasFinalText = event.text !== undefined && String(event.text).trim().length > 0

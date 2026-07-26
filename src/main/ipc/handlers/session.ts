@@ -221,7 +221,12 @@ export function registerSessionHandlers(): void {
         limit || undefined,
         leafId,
       )
-      return { items: disk.items, totalCount: disk.totalCount, sessionMeta: disk.sessionMeta }
+      return {
+        items: disk.items,
+        sourceCount: disk.items.length,
+        totalCount: disk.totalCount,
+        sessionMeta: disk.sessionMeta,
+      }
     } catch (e: unknown) {
       console.error('[IPC] session.getMessages failed:', e)
       return { items: [], totalCount: 0, error: errorMessage(e) || 'get_messages_failed' }

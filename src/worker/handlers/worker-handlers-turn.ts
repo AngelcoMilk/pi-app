@@ -2,7 +2,14 @@ import { errorMessage } from '@shared/error-message'
 import type { WorkerIncomingMessage } from '../worker-port-types.js'
 import type { ExtensionUIResponse } from '../desktop-ui-bridge.js'
 import type { WorkerReply } from '../worker-handler-types.js'
-import { st, initSession, baseEvent, emit, currentSessionModelKey } from '../worker-runtime.js'
+import {
+  st,
+  initSession,
+  baseEvent,
+  beginRunIdentity,
+  emit,
+  currentSessionModelKey,
+} from '../worker-runtime.js'
 
 export async function handleInit(msg: WorkerIncomingMessage, reply: WorkerReply): Promise<void> {
         try {
@@ -58,8 +65,10 @@ export async function handlePrompt(msg: WorkerIncomingMessage, reply: WorkerRepl
         // 在首个 stream 事件前就标 busy，避免切会话/evict 误杀；streamingBehavior 须用标记前的状态
         const alreadyStreaming = promptSession.isStreaming || st.agentTurnActive
         if (!alreadyStreaming) {
+          beginRunIdentity()
           st.agentTurnActive = true
-          emit({ ...baseEvent(), type: 'run', phase: 'running' })
+          st.promptPreflightActive = true
+          emit({ ...baseEvent(), type: 'run', phase: 'started' })
         }
         reply({ type: 'prompt-done' })
         void (async () => {
@@ -70,6 +79,11 @@ export async function handlePrompt(msg: WorkerIncomingMessage, reply: WorkerRepl
                 ? { ...extra, streamingBehavior: 'followUp' as const }
                 : extra
             await promptSession.prompt(promptText, merged)
+            if (!alreadyStreaming && st.promptPreflightActive) {
+              st.promptPreflightActive = false
+              st.agentTurnActive = false
+              emit({ ...baseEvent(), type: 'run', phase: 'idle' })
+            }
             if (slashMatch) {
               emit({
                 ...baseEvent(),
@@ -79,26 +93,21 @@ export async function handlePrompt(msg: WorkerIncomingMessage, reply: WorkerRepl
                 text: '命令已执行（详见下方助手/工具输出）',
               })
             }
-            // prompt() resolves when the *call* finishes; agent may still be streaming
-            // (or willRetry). Only release if AgentSession itself is idle — same as pi-tui
-            // waiting on isStreaming / waitForIdle rather than promise alone.
-            if (st.agentTurnActive && !promptSession.isStreaming) {
-              st.agentTurnActive = false
-              emit({ ...baseEvent(), type: 'run', phase: 'idle' })
-            }
           } catch (e: unknown) {
             console.error('[Worker] prompt failed:', e)
-            st.agentTurnActive = false
             const errText = errorMessage(e)
-            emit({
-              ...baseEvent(),
-              type: 'agent_error',
-              text: errText,
-              kind: 'error',
-              stopReason: 'error',
-            })
-            emit({ ...baseEvent(), type: 'run', phase: 'failed' })
-            emit({ ...baseEvent(), type: 'run', phase: 'idle' })
+            if (st.promptPreflightActive) {
+              st.promptPreflightActive = false
+              st.agentTurnActive = false
+              emit({
+                ...baseEvent(),
+                type: 'agent_error',
+                text: errText,
+                kind: 'error',
+                stopReason: 'error',
+              })
+              emit({ ...baseEvent(), type: 'run', phase: 'failed' })
+            }
             if (slashMatch) {
               emit({
                 ...baseEvent(),
@@ -115,33 +124,19 @@ export async function handlePrompt(msg: WorkerIncomingMessage, reply: WorkerRepl
 
 
 export async function handleAbort(msg: WorkerIncomingMessage, reply: WorkerReply): Promise<void> {
-        const wasActive = st.agentTurnActive
-        if (st.session) {
-          try {
-            st.session.clearQueue()
-          } catch (e) {
-            console.error('[Worker] clearQueue on abort failed:', e)
-          }
-        }
-        try {
-          st.session?.abortRetry?.()
-          st.session?.agent?.abort?.()
-        } catch (e: unknown) {
-          console.error('[Worker] abort failed:', e)
-        }
-        st.agentTurnActive = false
-        if (wasActive) {
-          emit({
-            ...baseEvent(),
-            type: 'agent_error',
-            text: 'Request was aborted.',
-            kind: 'aborted',
-            stopReason: 'aborted',
-          })
-        }
-        emit({ ...baseEvent(), type: 'run', phase: 'idle' })
-        reply({ type: 'abort-done' })
-        return
+  const session = st.session
+  if (!session) {
+    reply({ type: 'abort-done' })
+    return
+  }
+  try {
+    session.clearQueue()
+    await session.abort()
+    reply({ type: 'abort-done' })
+  } catch (error: unknown) {
+    console.error('[Worker] abort failed:', error)
+    reply({ type: 'error', error: `abort failed: ${errorMessage(error)}` })
+  }
 }
 
 
@@ -165,8 +160,6 @@ export async function handleFollowup(msg: WorkerIncomingMessage, reply: WorkerRe
             kind: 'error',
             stopReason: 'error',
           })
-          emit({ ...baseEvent(), type: 'run', phase: 'failed' })
-          emit({ ...baseEvent(), type: 'run', phase: 'idle' })
         })
         return
 }
@@ -200,15 +193,13 @@ export async function handleDispose(msg: WorkerIncomingMessage, reply: WorkerRep
             } catch {
               /* ignore */
             }
-            st.session?.abortRetry?.()
-            st.session?.agent?.abort?.()
-            // Yield long enough for SessionManager to write aborted assistant leaf to JSONL.
-            await new Promise((r) => setTimeout(r, 280))
+            if (st.session) await st.session.abort()
           }
         } catch (e) {
           console.error('[Worker] abort-on-dispose failed:', e)
         }
         st.agentTurnActive = false
+        st.promptPreflightActive = false
         if (st.unsubscribe) { st.unsubscribe(); st.unsubscribe = null }
         try {
           st.session?.dispose()

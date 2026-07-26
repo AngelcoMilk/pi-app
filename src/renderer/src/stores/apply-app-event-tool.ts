@@ -2,6 +2,7 @@ import { extractStatusFromOutput } from '@extension-compat/json-path'
 import { toolCallDetailFromPi } from '@shared/tool-call-detail'
 import { resolveToolCardDef } from '@renderer/features/timeline/tool-card-registry'
 import type { StoreApi, ToolEvent } from '@renderer/stores/apply-app-event-types'
+import { flushStreamPendingSync } from '@renderer/stores/ui-store-stream'
 
 /** Live tool update/end: match by toolCallId only (no name fallback — parallel same-name tools). */
 export function findLiveToolRowByCallId(
@@ -13,8 +14,9 @@ export function findLiveToolRowByCallId(
 }
 
 export function handleTool(event: ToolEvent, api: StoreApi): void {
-  const state = api.get()
   if (event.phase === 'start') {
+    flushStreamPendingSync(api.get, api.set)
+    const state = api.get()
     // First tool ends optimistic "waiting" chrome (same as first assistant token).
     if (api.get().agentTurnBootstrapping) {
       api.set({ agentTurnBootstrapping: false })
@@ -52,8 +54,9 @@ export function handleTool(event: ToolEvent, api: StoreApi): void {
     state.setRunState({ activeTool: event.toolName })
     return
   }
+  const state = api.get()
   if (event.phase === 'update') {
-    const items = api.get().timelineItems
+    const items = state.timelineItems
     const lastTool = findLiveToolRowByCallId(items, event.toolCallId)
     const line = extractStatusFromOutput(event.output, resolveToolCardDef(event.toolName)?.statusField)
     if (lastTool?.id && line) state.updateTimelineItem(lastTool.id, { toolPhase: 'update', toolStatusLine: line })

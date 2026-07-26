@@ -1,6 +1,7 @@
 import type { AgentSession, AgentSessionEvent } from '@earendil-works/pi-coding-agent'
 import type { AppEvent } from '@shared/app-events'
 import { assistantStreamDeltaFromMessageUpdate } from '@shared/pi-message-update'
+import { takeStreamUpdate } from '@shared/stream-merge'
 import {
   extractTextFromPiMessage,
   piUsageTotals,
@@ -8,9 +9,9 @@ import {
   type PiSessionMessage,
 } from '@shared/worker-message'
 import { resolveInteractByTool } from '../extension-compat/adapter-loader.js'
-import { extractJsonPath } from '../extension-compat/json-path.js'
+import { extractJsonPath, extractStatusFromOutput } from '../extension-compat/json-path.js'
 import type { DesktopUIBridge } from './desktop-ui-bridge.js'
-import { emitAgentErrorFromAssistant, lastAssistantFromMessages } from './session-event-helpers.js'
+import { lastAssistantFromMessages } from './session-event-helpers.js'
 
 export type SessionEventDeps = {
   baseEvent: () => Record<string, unknown>
@@ -20,9 +21,66 @@ export type SessionEventDeps = {
   getUiBridge: () => DesktopUIBridge | null
   isAgentTurnActive: () => boolean
   setAgentTurnActive: (v: boolean) => void
+  setPromptPreflightActive: (value: boolean) => void
   setCurrentRunId: (id: string) => void
   setCurrentTurnId: (id: string) => void
   nextSeq: () => number
+}
+
+type PendingTerminalError = {
+  text: string
+  kind: 'error' | 'aborted' | 'retry'
+  stopReason: string
+}
+
+let assistantTextSnapshot = ''
+let assistantThinkingSnapshot = ''
+let pendingTerminalError: PendingTerminalError | null = null
+
+export function resetSessionEventTracking(): void {
+  assistantTextSnapshot = ''
+  assistantThinkingSnapshot = ''
+  pendingTerminalError = null
+}
+
+function terminalErrorFromAssistant(
+  message: PiSessionMessage | null | undefined,
+): PendingTerminalError | null {
+  if (!message || (message.stopReason !== 'error' && message.stopReason !== 'aborted')) return null
+  const aborted = message.stopReason === 'aborted'
+  return {
+    text: String(message.errorMessage || (aborted ? 'Request was aborted.' : 'Agent request failed.')),
+    kind: aborted ? 'aborted' : 'error',
+    stopReason: message.stopReason,
+  }
+}
+
+function emitSettledRun(deps: SessionEventDeps): void {
+  const terminalError = pendingTerminalError
+  const base = deps.baseEvent()
+  deps.setAgentTurnActive(false)
+  deps.setPromptPreflightActive(false)
+  pendingTerminalError = null
+  assistantTextSnapshot = ''
+  assistantThinkingSnapshot = ''
+
+  queueMicrotask(() => {
+    if (terminalError) {
+      deps.emit({
+        ...base,
+        type: 'agent_error',
+        text: terminalError.text,
+        kind: terminalError.kind,
+        stopReason: terminalError.stopReason,
+      } as AppEvent)
+    }
+    const phase = terminalError
+      ? terminalError.kind === 'aborted'
+        ? 'cancelled'
+        : 'failed'
+      : 'idle'
+    deps.emit({ ...base, type: 'run', phase, settled: true } as AppEvent)
+  })
 }
 
 export function handleSessionEvent(event: AgentSessionEvent, deps: SessionEventDeps): void {
@@ -32,33 +90,29 @@ export function handleSessionEvent(event: AgentSessionEvent, deps: SessionEventD
 
   switch (event.type) {
     case 'agent_start': {
+      const hadProvisionalRun = deps.isAgentTurnActive()
       deps.setAgentTurnActive(true)
-      deps.setCurrentRunId(`run-${deps.nextSeq()}`)
-      deps.setCurrentTurnId(`turn-${deps.nextSeq()}`)
-      deps.emit({ ...base, type: 'run', phase: 'running' } as AppEvent)
+      deps.setPromptPreflightActive(false)
+      if (!hadProvisionalRun) {
+        deps.setCurrentRunId(`run-${deps.nextSeq()}`)
+        deps.setCurrentTurnId(`turn-${deps.nextSeq()}`)
+      }
+      resetSessionEventTracking()
+      deps.emit({ ...deps.baseEvent(), type: 'run', phase: 'running' } as AppEvent)
       break
     }
     case 'agent_end': {
-      // Align with pi-tui / AgentSession: willRetry means the turn is NOT finished —
-      // auto-retry continues without going idle (do not clear busy or emit run idle).
-      const willRetry = !!(event as { willRetry?: boolean }).willRetry
+      const willRetry = event.willRetry
+      const lastAssistant = lastAssistantFromMessages(event.messages || [])
       if (willRetry) {
-        if (process.env.PI_AUDIO_TRACE === '1' || process.env.PI_AUDIO_TRACE === 'true') {
-          console.log('[audio-trace] worker.agent_end_willRetry_keep_active')
-        }
+        pendingTerminalError = null
         break
       }
-      // Always clear busy + emit idle on real completion, even if a prompt short-path
-      // already flipped agentTurnActive (UI must stay in sync with session.isStreaming).
-      deps.setAgentTurnActive(false)
-      const last = lastAssistantFromMessages((event as { messages?: unknown[] }).messages || [])
-      if (last && (last.stopReason === 'error' || last.stopReason === 'aborted')) {
-        deps.emit({ ...base, type: 'run', phase: 'failed' } as AppEvent)
-      }
-      if (process.env.PI_AUDIO_TRACE === '1' || process.env.PI_AUDIO_TRACE === 'true') {
-        console.log('[audio-trace] worker.emit_run_idle')
-      }
-      deps.emit({ ...base, type: 'run', phase: 'idle' } as AppEvent)
+      pendingTerminalError = terminalErrorFromAssistant(lastAssistant)
+      break
+    }
+    case 'agent_settled': {
+      emitSettledRun(deps)
       break
     }
     case 'turn_start': {
@@ -76,7 +130,17 @@ export function handleSessionEvent(event: AgentSessionEvent, deps: SessionEventD
     case 'message_start': {
       const msg = event.message as PiSessionMessage
       if (msg?.role === 'assistant') {
+        assistantTextSnapshot = ''
+        assistantThinkingSnapshot = ''
         deps.emit({ ...base, type: 'message', role: 'assistant', phase: 'start' } as AppEvent)
+      } else if (msg?.role === 'user') {
+        deps.emit({
+          ...base,
+          type: 'message',
+          role: 'user',
+          phase: 'start',
+          text: extractTextFromPiMessage(msg),
+        } as AppEvent)
       }
       break
     }
@@ -86,45 +150,67 @@ export function handleSessionEvent(event: AgentSessionEvent, deps: SessionEventD
         | { type?: string; delta?: string; content?: string; text?: string }
         | undefined
       const stream = assistantStreamDeltaFromMessageUpdate(msg, ame)
-      if (stream.text) {
-        deps.emit({
-          ...base,
-          type: 'message',
-          role: 'assistant',
-          phase: 'delta',
-          text: stream.text,
-          contentKind: 'text',
-        } as AppEvent)
+      if (stream.text && stream.textSource) {
+        const nextText = takeStreamUpdate(assistantTextSnapshot, stream.text, stream.textSource)
+        assistantTextSnapshot = nextText.cumulative
+        if (nextText.chunk) {
+          deps.emit({
+            ...base,
+            type: 'message',
+            role: 'assistant',
+            phase: 'delta',
+            text: nextText.chunk,
+            contentKind: 'text',
+          } as AppEvent)
+        }
       }
-      if (stream.thinking) {
-        deps.emit({
-          ...base,
-          type: 'message',
-          role: 'assistant',
-          phase: 'delta',
-          text: stream.thinking,
-          contentKind: 'thinking',
-        } as AppEvent)
+      if (stream.thinking && stream.thinkingSource) {
+        const nextThinking = takeStreamUpdate(
+          assistantThinkingSnapshot,
+          stream.thinking,
+          stream.thinkingSource,
+        )
+        assistantThinkingSnapshot = nextThinking.cumulative
+        if (nextThinking.chunk) {
+          deps.emit({
+            ...base,
+            type: 'message',
+            role: 'assistant',
+            phase: 'delta',
+            text: nextThinking.chunk,
+            contentKind: 'thinking',
+          } as AppEvent)
+        }
       }
       break
     }
     case 'message_end': {
       const msg = event.message as PiSessionMessage
-      const entryId = session?.sessionManager?.getLeafId?.() ?? undefined
-      if (msg?.role === 'assistant') {
-        const text = extractTextFromPiMessage(msg)
-        deps.emit({
-          ...base,
-          type: 'message',
-          role: 'assistant',
-          phase: 'end',
-          text,
-          sessionEntryId: entryId,
-        } as AppEvent)
-        emitAgentErrorFromAssistant(base, msg, deps.emit)
-      } else if (msg?.role === 'user') {
-        deps.emit({ ...base, type: 'message', role: 'user', phase: 'end', sessionEntryId: entryId } as AppEvent)
-      }
+      if (msg?.role === 'assistant') pendingTerminalError = terminalErrorFromAssistant(msg)
+      const text = msg?.role === 'assistant' ? extractTextFromPiMessage(msg) : undefined
+      queueMicrotask(() => {
+        const entryId = session?.sessionManager?.getLeafId?.() ?? undefined
+        if (msg?.role === 'assistant') {
+          deps.emit({
+            ...base,
+            type: 'message',
+            role: 'assistant',
+            phase: 'end',
+            text,
+            sessionEntryId: entryId,
+          } as AppEvent)
+        } else if (msg?.role === 'user') {
+          deps.emit({
+            ...base,
+            type: 'message',
+            role: 'user',
+            phase: 'end',
+            sessionEntryId: entryId,
+          } as AppEvent)
+        }
+      })
+      assistantTextSnapshot = ''
+      assistantThinkingSnapshot = ''
       break
     }
     case 'tool_execution_start': {
@@ -149,14 +235,17 @@ export function handleSessionEvent(event: AgentSessionEvent, deps: SessionEventD
       break
     }
     case 'tool_execution_update': {
-      deps.emit({
-        ...base,
-        type: 'tool',
-        toolCallId: event.toolCallId,
-        toolName: event.toolName,
-        phase: 'update',
-        output: event.partialResult,
-      } as AppEvent)
+      const statusLine = extractStatusFromOutput(event.partialResult)
+      if (statusLine) {
+        deps.emit({
+          ...base,
+          type: 'tool',
+          toolCallId: event.toolCallId,
+          toolName: event.toolName,
+          phase: 'update',
+          output: statusLine,
+        } as AppEvent)
+      }
       break
     }
     case 'tool_execution_end': {
@@ -215,15 +304,13 @@ export function handleSessionEvent(event: AgentSessionEvent, deps: SessionEventD
     case 'auto_retry_end': {
       const e = event as { success?: boolean; finalError?: string; attempt?: number }
       if (!e.success && e.finalError) {
-        const raw = e.finalError
-        deps.emit({
-          ...base,
-          type: 'agent_error',
-          text: e.attempt ? `Aborted after ${e.attempt} retry attempt\n${raw}` : String(raw),
+        pendingTerminalError = {
+          text: e.attempt
+            ? `Aborted after ${e.attempt} retry attempt\n${e.finalError}`
+            : String(e.finalError),
           kind: 'retry',
           stopReason: 'error',
-        } as AppEvent)
-        deps.emit({ ...base, type: 'run', phase: 'failed' } as AppEvent)
+        }
       }
       break
     }

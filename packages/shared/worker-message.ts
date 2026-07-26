@@ -19,6 +19,7 @@ export type PiSessionMessage = {
     cost?: { total?: number }
   }
   stopReason?: string
+  errorMessage?: string
   timestamp?: string | number
   toolName?: string
 }

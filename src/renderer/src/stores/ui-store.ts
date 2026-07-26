@@ -241,7 +241,7 @@ export const useUIStore = create<UIState>()(
       deleteStreamPendingForId(id)
       return {
         streamingAssistantId: null,
-        timelineItems: s.timelineItems.map((i) => (i.id === id ? { ...i, text: i.text && i.text.trim() ? i.text : (text ?? i.text) } : i)),
+        timelineItems: s.timelineItems.map((i) => (i.id === id ? { ...i, text: text ?? i.text } : i)),
       }
     })
   },

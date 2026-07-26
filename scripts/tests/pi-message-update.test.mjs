@@ -17,7 +17,9 @@ describe('assistantStreamDeltaFromMessageUpdate', () => {
       { type: 'text_delta', delta: 'lo' },
     )
     assert.equal(stream.text, 'Hello front')
+    assert.equal(stream.textSource, 'snapshot')
     assert.equal(stream.thinking, 'plan')
+    assert.equal(stream.thinkingSource, 'snapshot')
   })
 
   it('falls back to text_delta when partial has no text yet', () => {
@@ -26,6 +28,7 @@ describe('assistantStreamDeltaFromMessageUpdate', () => {
       { type: 'text_delta', delta: 'first' },
     )
     assert.equal(stream.text, 'first')
+    assert.equal(stream.textSource, 'delta')
   })
 
   it('falls back to text_end content', () => {
