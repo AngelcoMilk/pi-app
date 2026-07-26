@@ -50,6 +50,7 @@ export const RichInput = forwardRef<HTMLDivElement, RichInputProps>(function Ric
   ref,
 ) {
   const innerRef = useRef<HTMLDivElement>(null)
+  const animationFrameRef = useRef<number | null>(null)
   useImperativeHandle(ref, () => innerRef.current as HTMLDivElement, [])
 
   const refreshLayoutAndEmpty = () => {
@@ -60,12 +61,17 @@ export const RichInput = forwardRef<HTMLDivElement, RichInputProps>(function Ric
     syncRichInputEmpty(node)
   }
 
-  const handleInput = () => {
-    if (!innerRef.current) return
-    requestAnimationFrame(() => {
-      if (!innerRef.current) return
+  const scheduleRefreshLayoutAndEmpty = () => {
+    if (animationFrameRef.current !== null) return
+    animationFrameRef.current = requestAnimationFrame(() => {
+      animationFrameRef.current = null
       refreshLayoutAndEmpty()
     })
+  }
+
+  const handleInput = () => {
+    if (!innerRef.current) return
+    scheduleRefreshLayoutAndEmpty()
     onInput?.()
   }
 
@@ -74,20 +80,34 @@ export const RichInput = forwardRef<HTMLDivElement, RichInputProps>(function Ric
     if (!el) return
     // Start empty so CSS placeholder shows on mount.
     el.classList.add('is-empty')
-    syncRichInputEmpty(el)
     refreshLayoutAndEmpty()
 
-    // Programmatic fills (rewind prefill, setContent, history) often skip `input` events.
-    // MutationObserver keeps is-empty in sync for DOM writes.
-    const observer = new MutationObserver(() => {
-      syncRichInputEmpty(el)
+    let observedWidth = el.getBoundingClientRect().width
+    const resizeObserver = new ResizeObserver((entries) => {
+      const entry = entries[0]
+      if (!entry) return
+      const width = entry.borderBoxSize[0]?.inlineSize ?? entry.target.getBoundingClientRect().width
+      if (width === observedWidth) return
+      observedWidth = width
+      scheduleRefreshLayoutAndEmpty()
     })
-    observer.observe(el, {
+    resizeObserver.observe(el, { box: 'border-box' })
+
+    // Programmatic fills (rewind prefill, setContent, history) often skip `input` events.
+    const mutationObserver = new MutationObserver(scheduleRefreshLayoutAndEmpty)
+    mutationObserver.observe(el, {
       childList: true,
       characterData: true,
       subtree: true,
     })
-    return () => observer.disconnect()
+    return () => {
+      resizeObserver.disconnect()
+      mutationObserver.disconnect()
+      if (animationFrameRef.current !== null) {
+        cancelAnimationFrame(animationFrameRef.current)
+        animationFrameRef.current = null
+      }
+    }
   }, [])
 
   // 事件委托：点击 chip 的删除按钮 → 移除该 chip 及相邻 ZWSP，刷新输入态
