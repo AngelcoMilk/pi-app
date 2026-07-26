@@ -97,6 +97,13 @@ describe('github release update helpers', () => {
     assert.match(src, /downloadUrl/)
   })
 
+  it('uses Electron Chromium networking instead of Node global fetch', () => {
+    const src = readFileSync(srcPath, 'utf8')
+    assert.match(src, /import \{ app, net \} from 'electron'/)
+    assert.match(src, /fetchLatestGitHubRelease\(slug, net\.fetch\)/)
+    assert.doesNotMatch(src, /await fetch\(/)
+  })
+
   it('sanitizeReleaseNotes drops legacy link-only placeholders', () => {
     // Keep in sync with sanitizeReleaseNotes in src/main/github-release-check.ts
     function sanitizeReleaseNotes(body) {

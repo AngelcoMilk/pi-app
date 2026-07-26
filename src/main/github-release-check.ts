@@ -1,11 +1,10 @@
-import { app } from 'electron'
+import { app, net } from 'electron'
 import log from 'electron-log'
-import { errorMessage } from '@shared/error-message'
 import type { AppUpdateAsset, AppUpdateAssetKind } from '@shared/app-update'
+import { fetchLatestGitHubRelease, type GhAsset } from './github-release-fetch'
 import { emitOperationEvent } from './operation-events'
 
 const DEFAULT_REPO = 'justhil/pi-app'
-const API = 'https://api.github.com'
 
 export type GitHubReleaseCheckResult = {
   ok: boolean
@@ -18,19 +17,6 @@ export type GitHubReleaseCheckResult = {
   downloadName: string | null
   assets: AppUpdateAsset[]
   error?: string
-}
-
-type GhAsset = {
-  name?: string
-  browser_download_url?: string
-  size?: number
-}
-
-type GhRelease = {
-  tag_name?: string
-  html_url?: string
-  body?: string | null
-  assets?: GhAsset[]
 }
 
 function repoSlug(): string {
@@ -171,89 +157,22 @@ function mapAssets(raw: GhAsset[] | undefined): AppUpdateAsset[] {
   return out
 }
 
-async function githubHeaders(): Promise<Record<string, string>> {
-  const headers: Record<string, string> = {
-    Accept: 'application/vnd.github+json',
-    'User-Agent': 'pi-desktop',
-  }
-  const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN
-  if (token) headers.Authorization = `Bearer ${token}`
-  return headers
-}
-
-async function fetchLatestRelease(slug: string): Promise<GhRelease | null> {
-  const headers = await githubHeaders()
-  const signal = AbortSignal.timeout(25_000)
-  const response = await fetch(`${API}/repos/${slug}/releases/latest`, { headers, signal })
-  if (response.status === 404) {
-    const list = await fetch(`${API}/repos/${slug}/releases?per_page=5`, { headers, signal })
-    if (!list.ok) return null
-    const arr = (await list.json()) as GhRelease[]
-    const first = arr?.find((row) => row?.tag_name && !String(row.tag_name).includes('draft'))
-    return first || null
-  }
-  if (!response.ok) return null
-  return (await response.json()) as GhRelease
-}
-
 export async function checkGitHubReleaseUpdate(): Promise<GitHubReleaseCheckResult> {
   const slug = repoSlug()
   const currentVersion = app.getVersion()
   const fallbackUrl = `https://github.com/${slug}/releases`
   const started = Date.now()
   emitOperationEvent({ operation: 'release.checkGitHub', status: 'start' })
-  try {
-    const latest = await fetchLatestRelease(slug)
-    if (!latest?.tag_name) {
-      emitOperationEvent({
-        operation: 'release.checkGitHub',
-        status: 'error',
-        durationMs: Date.now() - started,
-        detail: 'no_release',
-      })
-      return {
-        ok: false,
-        currentVersion,
-        latestVersion: null,
-        hasUpdate: false,
-        releaseUrl: fallbackUrl,
-        releaseNotes: '',
-        downloadUrl: null,
-        downloadName: null,
-        assets: [],
-        error: '无法读取 GitHub Releases',
-      }
-    }
-    const assets = mapAssets(latest.assets)
-    const preferred = pickDownloadAsset(assets)
-    const hasUpdate = isVersionNewer(latest.tag_name, currentVersion)
-    const releaseUrl =
-      latest.html_url || `https://github.com/${slug}/releases/tag/${latest.tag_name}`
+  const fetched = await fetchLatestGitHubRelease(slug, net.fetch)
+  if (!fetched.ok) {
+    const timeout = fetched.detail.toLowerCase().includes('timeout')
     emitOperationEvent({
       operation: 'release.checkGitHub',
-      status: 'ok',
+      status: timeout ? 'timeout' : 'error',
       durationMs: Date.now() - started,
+      detail: fetched.detail,
     })
-    return {
-      ok: true,
-      currentVersion,
-      latestVersion: latest.tag_name.replace(/^v/i, ''),
-      hasUpdate,
-      releaseUrl,
-      releaseNotes: sanitizeReleaseNotes(latest.body),
-      downloadUrl: preferred?.url ?? null,
-      downloadName: preferred?.name ?? null,
-      assets,
-    }
-  } catch (error: unknown) {
-    const message = error instanceof Error ? errorMessage(error) : errorMessage(error)
-    emitOperationEvent({
-      operation: 'release.checkGitHub',
-      status: message.toLowerCase().includes('timeout') ? 'timeout' : 'error',
-      durationMs: Date.now() - started,
-      detail: message,
-    })
-    log.warn('[GitHubRelease] check failed:', message)
+    log.warn('[GitHubRelease] check failed:', fetched.detail)
     return {
       ok: false,
       currentVersion,
@@ -264,7 +183,30 @@ export async function checkGitHubReleaseUpdate(): Promise<GitHubReleaseCheckResu
       downloadUrl: null,
       downloadName: null,
       assets: [],
-      error: message,
+      error: fetched.error,
     }
+  }
+
+  const latest = fetched.release
+  const assets = mapAssets(latest.assets)
+  const preferred = pickDownloadAsset(assets)
+  const hasUpdate = isVersionNewer(latest.tag_name, currentVersion)
+  const releaseUrl =
+    latest.html_url || `https://github.com/${slug}/releases/tag/${latest.tag_name}`
+  emitOperationEvent({
+    operation: 'release.checkGitHub',
+    status: 'ok',
+    durationMs: Date.now() - started,
+  })
+  return {
+    ok: true,
+    currentVersion,
+    latestVersion: latest.tag_name.replace(/^v/i, ''),
+    hasUpdate,
+    releaseUrl,
+    releaseNotes: sanitizeReleaseNotes(latest.body),
+    downloadUrl: preferred?.url ?? null,
+    downloadName: preferred?.name ?? null,
+    assets,
   }
 }
