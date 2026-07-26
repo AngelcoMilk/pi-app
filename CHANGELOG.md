@@ -2,6 +2,30 @@
 
 面向仓库的完整版本记录。发版时由 `scripts/generate-release-notes.mjs` 从对应章节生成 **GitHub Release 正文**（用户可读更新说明，应用内「发现新版本」弹窗展示）。发布与应用内更新流程见 [doc/RELEASE.md](doc/RELEASE.md)。
 
+## [0.5.0] — 2026-07-26
+
+### 新增
+
+- **#31 Composer `@` 项目文件搜索**：在消息开头或空白后输入 `@`，即可模糊搜索当前项目文件和目录；支持键盘、鼠标、目录继续补全、hidden 文件、`.gitignore`、symlink，以及空格 / Unicode / Windows 路径
+
+### 修复
+
+- **#30 模型配置保存后仍提示未保存**：保存成功后会同步清除设置页脏状态；保存失败仍保留未保存提示
+- **#32 手动检查更新无法读取 GitHub Releases**：更新请求改用 Electron Chromium 网络栈，兼容系统代理和 PAC；保留 token、超时及 latest 404 fallback 行为
+- **#33 macOS 提示应用已损坏**：Apple 凭据齐全时自动签名、公证并执行 Gatekeeper 验证；凭据缺失时仍发布 unsigned DMG / ZIP，不再阻塞整次 Release
+- **中文输入法 Enter 误发送**：IME 组词期间的 Enter 不再触发补全或发送
+- **流式 Markdown 表格延迟成型**：流式尾部出现表格等块级语法时改用 Markdown 渲染
+- **思考内容滚动串联**：展开的思考内容拥有独立滚动区，鼠标滚轮不再带动整条 Timeline
+
+### 优化
+
+- **对话区宽度与思考可读性**：侧栏收起后对话区按中心列自适应放宽；思考正文提升字号、行高和对比度
+- **文件引用兼容性**：项目文件以现有附件 chip 展示，发送保持 `@path`；含空格路径使用引号，避免引用被截断
+
+### 注意
+
+- macOS 构建若未配置 Apple Developer ID 与公证凭据，下载到的 unsigned 版本仍可能被 Gatekeeper 拦截；需要签名版本时请等待带签名资产或手动移除 quarantine
+
 ## [0.4.20] — 2026-07-20
 
 ### 修复
