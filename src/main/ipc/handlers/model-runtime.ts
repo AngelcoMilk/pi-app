@@ -45,6 +45,7 @@ export function registerModelRuntimeHandlers(): void {
   })
 
   registerHandler('ipc:model.set', async (req) => {
+    const sessionFile = String(req.sessionFile || '').trim() || undefined
     let provider: string
     let modelId: string
     if (req.provider && req.modelId) {
@@ -59,24 +60,25 @@ export function registerModelRuntimeHandlers(): void {
         modelId = raw
       }
     }
-    if (!workerManager.isRunning) {
+    if (!workerManager.isRunning && !sessionFile) {
       const cwd = workerManager.cwd || configStore.get('currentProject')
       if (!cwd || isSandboxWorkspacePath(cwd)) throw new Error('Worker not started')
       await workerManager.start(cwd)
     }
-    await workerManager.setModel(provider, modelId)
+    await workerManager.setModel(provider, modelId, sessionFile)
     return { modelId: `${provider}/${modelId}` }
   })
 
   registerHandler('ipc:model.cycle', async () => ({ modelId: '', thinkingLevel: 'medium' }))
 
   registerHandler('ipc:thinkingLevel.set', async (req) => {
-    if (!workerManager.isRunning) {
+    const sessionFile = String(req.sessionFile || '').trim() || undefined
+    if (!workerManager.isRunning && !sessionFile) {
       const cwd = workerManager.cwd || configStore.get('currentProject')
       if (!cwd || isSandboxWorkspacePath(cwd)) throw new Error('Worker not started')
       await workerManager.start(cwd)
     }
-    await workerManager.setThinkingLevel(req.level)
+    await workerManager.setThinkingLevel(req.level, sessionFile)
     return { level: req.level }
   })
 

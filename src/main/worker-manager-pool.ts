@@ -41,6 +41,14 @@ function safeWrite(msg: string): void {
   }
 }
 
+export function rejectPendingWorkerRequests(slot: WorkerSlot, reason: Error): void {
+  for (const pending of slot.pendingRequests.values()) {
+    clearTimeout(pending.timer)
+    pending.reject(reason)
+  }
+  slot.pendingRequests.clear()
+}
+
 export function attachWorkerHandlers(
   slot: WorkerSlot,
   forked: Electron.UtilityProcess,
@@ -165,6 +173,7 @@ export function attachWorkerHandlers(
       safeWrite(`[WorkerManager] Ignoring stale worker exit (code ${code})`)
       return
     }
+    rejectPendingWorkerRequests(slot, new Error(`Worker exited with code ${code}`))
     opts.onSlotExit(slot, code)
   })
 }
@@ -274,11 +283,10 @@ export async function forkWorkerForCwd(
 export function evictBackgroundWorkers(
   pool: Map<string, WorkerSlot>,
   foregroundKey: string,
-  keepKey?: string | null,
+  _keepKey?: string | null,
 ): void {
   evictIdleWorkers(pool, {
     foregroundKey,
-    keepKeys: keepKey ? [keepKey] : [],
     maxWorkers: readMaxSessionWorkers(),
   })
 }
@@ -287,27 +295,12 @@ export function evictIdleWorkers(
   pool: Map<string, WorkerSlot>,
   opts: {
     foregroundKey: string | null
-    keepKeys?: string[]
     maxWorkers?: number
   },
 ): void {
   const maxWorkers = opts.maxWorkers ?? readMaxSessionWorkers()
-  const keep = new Set<string>()
-  if (opts.foregroundKey) keep.add(opts.foregroundKey)
-  for (const k of opts.keepKeys || []) {
-    if (k) keep.add(k)
-  }
-
-  // Drop idle slots not in keep set (soft cleanup on switch)
-  for (const [key, slot] of pool) {
-    if (keep.has(key)) continue
-    if (slot.agentTurnActive) continue
-    void disposeWorkerSlot(slot).then(() => {
-      if (pool.get(key) === slot) pool.delete(key)
-    })
-  }
-
-  // Hard capacity: dispose oldest-foreground idle first
+  // Hard capacity: dispose oldest-foreground idle first. UI focus changes alone
+  // never dispose idle workers; TTL cleanup is owned by pruneIdleWorkersByTimeout.
   while (pool.size > maxWorkers) {
     let victimKey: string | null = null
     let oldestFg = Number.POSITIVE_INFINITY

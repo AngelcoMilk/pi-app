@@ -20,12 +20,17 @@ export function ThinkingPicker() {
   const open = useUIStore((s) => s.thinkingPickerOpen)
   const setOpen = useUIStore((s) => s.setThinkingPickerOpen)
   const current = normalizeThinkingLevel(useUIStore((s) => s.runState.thinkingLevel)) ?? 'medium'
+  const sessionFile = useUIStore((s) => s.historySessionFile)
 
   if (!open) return null
 
   const pick = async (level: string) => {
     try {
-      await ipcClient.invoke('thinkingLevel.set', { sessionId: '', level })
+      await ipcClient.invoke('thinkingLevel.set', {
+        sessionId: '',
+        sessionFile: sessionFile ?? undefined,
+        level,
+      })
       useUIStore.getState().setRunState({ thinkingLevel: level })
       toast.success(`Thinking: ${level}`)
     } catch (e) {

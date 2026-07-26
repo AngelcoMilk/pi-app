@@ -54,7 +54,10 @@ export function registerSessionHandlers(): void {
 
   registerHandler('ipc:session.open', async (req) => {
     const sessionId = req.sessionId
-    if (req.sessionFile) setPendingWorkerSessionFile(req.sessionFile)
+    if (req.sessionFile) {
+      setPendingWorkerSessionFile(req.sessionFile)
+      workerManager.focusExistingSession(req.sessionFile)
+    }
     return {
       session: {
         sessionId,
@@ -70,6 +73,7 @@ export function registerSessionHandlers(): void {
 
   registerHandler('ipc:session.setPendingBind', async (req) => {
     setPendingWorkerSessionFile(req.sessionFile ?? null)
+    if (req.sessionFile) workerManager.focusExistingSession(req.sessionFile)
     return { ok: true }
   })
 
@@ -79,21 +83,8 @@ export function registerSessionHandlers(): void {
       setPendingWorkerSessionFile(null)
       return { bound: false, sessionId: null as string | null }
     }
-    try {
-      // 禁止 force：后台 agent 仍在跑时不得 dispose 旧 session
-      const r = await workerManager.loadSession(sessionFile)
-      setPendingWorkerSessionFile(null)
-      return {
-        bound: true,
-        sessionId: r.sessionId,
-        model: r.model,
-        thinkingLevel: r.thinkingLevel,
-        modelFallbackMessage: r.modelFallbackMessage,
-      }
-    } catch (e: unknown) {
-      setPendingWorkerSessionFile(sessionFile)
-      return { bound: false, sessionId: readSessionIdFromFile(sessionFile), error: errorMessage(e) }
-    }
+    setPendingWorkerSessionFile(sessionFile)
+    return { bound: false, sessionId: readSessionIdFromFile(sessionFile) }
   })
 
   registerHandler('ipc:session.setEphemeralDraft', async (req) => {

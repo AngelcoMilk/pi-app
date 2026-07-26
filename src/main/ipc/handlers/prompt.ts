@@ -11,8 +11,6 @@ export function registerPromptHandlers(): void {
       (f, o) =>
         workerManager.loadSession(f, {
           force: o?.force,
-          // resolveWorkspaceCwd falls back to configStore currentProject when pool is empty
-          cwd: workerManager.resolveWorkspaceCwd() || undefined,
         }),
       { sessionFile },
     )

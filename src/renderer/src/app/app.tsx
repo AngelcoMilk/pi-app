@@ -33,6 +33,7 @@ import { hydrateThemeFromSettings } from '@renderer/features/settings/settings-d
 import { CommandPalette, ShortcutsHelpSheet } from '@renderer/features/shell/command-palette'
 import { EmptyState } from '@renderer/components/ui/empty-state'
 import { AppUpdateHost } from '@renderer/lib/app-update-notify'
+import { clearExitedSessionRuntime } from '@renderer/lib/worker-exit-runtime'
 
 import { useDoubleEscapeTree } from '@renderer/hooks/use-double-escape-tree'
 
@@ -167,6 +168,8 @@ export default function App() {
     })
     const unsubExit = onWorkerExit((info) => {
       console.warn('Worker exited:', info)
+      const store = useUIStore.getState()
+      clearExitedSessionRuntime(info, store.setSessionRuntimeRunning)
     })
     return () => {
       unsubEvents()

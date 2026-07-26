@@ -1,10 +1,14 @@
+import { EventEmitter } from 'node:events'
 import { describe, expect, it, vi } from 'vitest'
 import type { WorkerSlot } from '../worker-manager-types'
+import { WorkerManager } from '../worker-manager'
 import {
+  attachWorkerHandlers,
   canAcquireNewWorker,
   evictBackgroundWorkers,
   evictIdleWorkers,
   pruneIdleWorkersByTimeout,
+  slotRequest,
 } from '../worker-manager-pool'
 import {
   minutesToIdleDelayMs,
@@ -84,11 +88,28 @@ describe('worker-pool-config', () => {
 })
 
 describe('evictIdleWorkers', () => {
+  it('should_keep_idle_sessions_while_pool_is_within_capacity', async () => {
+    vi.useFakeTimers()
+    try {
+      const pool = new Map<string, WorkerSlot>()
+      pool.set('/s/a', fakeSlot('/s/a', '/w', false, 1))
+      pool.set('/s/b', fakeSlot('/s/b', '/w', false, 2))
+      pool.set('/s/c', fakeSlot('/s/c', '/w', false, 3))
+
+      evictIdleWorkers(pool, { foregroundKey: '/s/c', maxWorkers: 4 })
+      await vi.runAllTimersAsync()
+
+      expect([...pool.keys()]).toEqual(['/s/a', '/s/b', '/s/c'])
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('should_keep_agentTurnActive_background_when_switching_foreground', () => {
     const pool = new Map<string, WorkerSlot>()
     pool.set('/s/a', fakeSlot('/s/a', '/w/a', true, 1))
     pool.set('/s/b', fakeSlot('/s/b', '/w/a', false, 2))
-    evictIdleWorkers(pool, { foregroundKey: '/s/b', keepKeys: ['/s/a'], maxWorkers: 4 })
+    evictIdleWorkers(pool, { foregroundKey: '/s/b', maxWorkers: 4 })
     expect(pool.has('/s/a')).toBe(true)
     expect(pool.has('/s/b')).toBe(true)
   })
@@ -104,7 +125,7 @@ describe('evictIdleWorkers', () => {
     expect(pool.has('/s/c')).toBe(false)
   })
 
-  it('legacy_evictBackgroundWorkers_keeps_previous_key', () => {
+  it('legacy_evictBackgroundWorkers_keeps_idle_slots_within_capacity', () => {
     const pool = new Map<string, WorkerSlot>()
     pool.set('/w/a', fakeSlot('/w/a', '/w/a', false))
     pool.set('/w/b', fakeSlot('/w/b', '/w/b', false))
@@ -140,5 +161,100 @@ describe('pruneIdleWorkersByTimeout', () => {
     const n = pruneIdleWorkersByTimeout(pool, null, Date.now())
     expect(n).toBe(0)
     expect(pool.has('/s/a')).toBe(true)
+  })
+})
+
+describe('session-scoped RPC routing', () => {
+  it('should_not_move_view_foreground_when_targeting_an_existing_background_worker', async () => {
+    const manager = new WorkerManager()
+    const foregroundProcess = new EventEmitter() as EventEmitter & {
+      postMessage: ReturnType<typeof vi.fn>
+      stdout?: EventEmitter
+      stderr?: EventEmitter
+    }
+    foregroundProcess.postMessage = vi.fn()
+    const backgroundProcess = new EventEmitter() as EventEmitter & {
+      postMessage: ReturnType<typeof vi.fn>
+      stdout?: EventEmitter
+      stderr?: EventEmitter
+    }
+    const foregroundKey = normalizeSessionKey('/s/a')
+    const backgroundKey = normalizeSessionKey('/s/b')
+    const foregroundSlot = fakeSlot(foregroundKey, '/w', false)
+    const backgroundSlot = fakeSlot(backgroundKey, '/w', false)
+    foregroundSlot.worker = foregroundProcess as unknown as WorkerSlot['worker']
+    backgroundSlot.worker = backgroundProcess as unknown as WorkerSlot['worker']
+    backgroundProcess.postMessage = vi.fn((message: { requestId?: string }) => {
+      queueMicrotask(() => {
+        backgroundProcess.emit('message', {
+          type: 'queueCleared',
+          requestId: message.requestId,
+          steering: [],
+          followUp: [],
+        })
+      })
+    })
+    attachWorkerHandlers(backgroundSlot, backgroundSlot.worker, {
+      mainWindow: null,
+      onAppEvent: vi.fn(),
+      onSlotExit: vi.fn(),
+    })
+
+    const internals = manager as unknown as {
+      pool: Map<string, WorkerSlot>
+      foregroundPoolKey: string | null
+    }
+    internals.pool.set(foregroundKey, foregroundSlot)
+    internals.pool.set(backgroundKey, backgroundSlot)
+    internals.foregroundPoolKey = foregroundKey
+
+    await manager.clearPromptQueue('/s/b')
+    await manager.loadSession('/s/b', { cwd: '/w' })
+    manager.respondExtensionUI({ id: 'foreground-response', confirmed: true })
+
+    expect(foregroundProcess.postMessage).toHaveBeenCalledWith({
+      type: 'extension-ui-response',
+      response: { id: 'foreground-response', confirmed: true },
+    })
+    expect(internals.foregroundPoolKey).toBe(foregroundKey)
+
+    expect(manager.focusExistingSession('/s/b')).toBe(true)
+    expect(internals.foregroundPoolKey).toBe(backgroundKey)
+  })
+})
+
+describe('worker process exit', () => {
+  it('should_reject_all_pending_requests_when_current_worker_exits', async () => {
+    vi.useFakeTimers()
+    try {
+      const processEmitter = new EventEmitter() as EventEmitter & {
+        postMessage: ReturnType<typeof vi.fn>
+        stdout?: EventEmitter
+        stderr?: EventEmitter
+      }
+      processEmitter.postMessage = vi.fn()
+      const slot = fakeSlot('/s/a', '/w', true)
+      slot.worker = processEmitter as unknown as WorkerSlot['worker']
+
+      attachWorkerHandlers(slot, slot.worker, {
+        mainWindow: null,
+        onAppEvent: vi.fn(),
+        onSlotExit: vi.fn(),
+      })
+
+      const pendingRequest = slotRequest(slot, 'getState')
+      const rejection = pendingRequest.catch((error: unknown) => error)
+      expect(slot.pendingRequests.size).toBe(1)
+
+      processEmitter.emit('exit', 17)
+      await Promise.resolve()
+
+      expect(slot.pendingRequests.size).toBe(0)
+      await expect(rejection).resolves.toEqual(
+        expect.objectContaining({ message: expect.stringContaining('17') }),
+      )
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

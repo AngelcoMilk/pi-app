@@ -35,8 +35,13 @@ const api = {
     return () => ipcRenderer.off(EVENTS_CHANNEL, handler)
   },
 
-  onWorkerExit(callback: (info: { code: number; cwd: string }) => void): () => void {
-    const handler = (_event: unknown, data: { code: number; cwd: string }): void => callback(data)
+  onWorkerExit(
+    callback: (info: { code: number; cwd: string; sessionFile?: string | null; poolKey?: string | null }) => void,
+  ): () => void {
+    const handler = (
+      _event: unknown,
+      data: { code: number; cwd: string; sessionFile?: string | null; poolKey?: string | null },
+    ): void => callback(data)
     ipcRenderer.on(WORKER_EXIT_CHANNEL, handler)
     return () => ipcRenderer.off(WORKER_EXIT_CHANNEL, handler)
   },

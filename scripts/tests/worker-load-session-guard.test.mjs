@@ -14,14 +14,14 @@ describe('worker loadSession guard', () => {
     assert.match(text, /st\.session!\.sessionFile/)
   })
 
-  it('session.prepare does not force dispose a busy live session', () => {
+  it('session.prepare remains disk-only and does not create or bind a worker', () => {
     const text = src('src/main/ipc/handlers/session.ts')
     const prepareStart = text.indexOf("ipc:session.prepare")
     const prepareEnd = text.indexOf('ipc:session.setEphemeralDraft')
     assert.ok(prepareStart >= 0 && prepareEnd > prepareStart, 'prepare handler markers')
     const prepareBlock = text.slice(prepareStart, prepareEnd)
-    assert.match(prepareBlock, /loadSession\(sessionFile\)/)
-    assert.doesNotMatch(prepareBlock, /force:\s*true/)
+    assert.doesNotMatch(prepareBlock, /loadSession|ensureSessionWorker|workerManager\.start/)
+    assert.match(prepareBlock, /readSessionIdFromFile\(sessionFile\)/)
   })
 
   it('prompt marks agentTurnActive before awaiting session.prompt', () => {
@@ -34,11 +34,14 @@ describe('worker loadSession guard', () => {
     assert.match(text, /alreadyStreaming && !extra\?\.streamingBehavior/)
   })
 
-  it('workerManager keeps previous cwd when reusing existing foreground worker', () => {
+  it('workerManager changes foreground only through explicit view-focus paths', () => {
     const text = src('src/main/worker-manager.ts')
-    // Multi-session pool: keep previous foreground key while promoting the reused slot.
-    assert.match(text, /evictIdleWorkers\(/)
-    assert.match(text, /keepKeys:\s*prev && prev !== (?:key|sk) \? \[prev\] : \[\]/)
+    const resolveStart = text.indexOf('private async resolveSlotForRpc')
+    const resolveEnd = text.indexOf('private request(', resolveStart)
+    assert.ok(resolveStart >= 0 && resolveEnd > resolveStart, 'RPC resolver markers')
+    assert.doesNotMatch(text.slice(resolveStart, resolveEnd), /setForeground/)
+    assert.match(text, /focusExistingSession\(sessionFile: string\)/)
+    assert.match(text, /focusSessionWorker\(sessionFile: string, cwd: string\)/)
   })
 
   it('getState reflects agent turn activity for runtime snapshot', () => {

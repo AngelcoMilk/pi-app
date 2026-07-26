@@ -32,6 +32,7 @@ export function ModelPicker() {
   const open = useUIStore((s) => s.modelPickerOpen)
   const setOpen = useUIStore((s) => s.setModelPickerOpen)
   const currentModel = useUIStore((s) => s.runState.model)
+  const sessionFile = useUIStore((s) => s.historySessionFile)
   const [models, setModels] = useState<ModelRow[]>([])
   const [query, setQuery] = useState('')
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
@@ -61,7 +62,12 @@ export function ModelPicker() {
   const pick = async (m: ModelRow) => {
     const key = `${m.provider}/${m.id}`
     try {
-      await ipcClient.invoke('model.set', { sessionId: '', provider: m.provider, modelId: m.id })
+      await ipcClient.invoke('model.set', {
+        sessionId: '',
+        sessionFile: sessionFile ?? undefined,
+        provider: m.provider,
+        modelId: m.id,
+      })
       useUIStore.getState().setRunState({ model: key })
       toast.success(t('composer:switchedModel', { key }))
     } catch (e) {

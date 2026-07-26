@@ -113,7 +113,12 @@ export interface ModelListRequest {
   scope?: 'catalog' | 'available'
 }
 export interface ModelListResponse { models: ModelInfo[] }
-export interface ModelSetRequest { sessionId: string; modelId: string }
+export interface ModelSetRequest {
+  sessionId: string
+  sessionFile?: string
+  provider?: string
+  modelId: string
+}
 export interface ModelSetResponse { modelId: string }
 export interface ModelCycleRequest { sessionId: string; direction?: 'next' | 'prev' }
 export interface ModelCycleResponse { modelId: string; thinkingLevel: string }
@@ -173,7 +178,11 @@ export interface PiModelsFetchResponse {
 
 // ── ThinkingLevel ──
 export type ThinkingLevel = 'off' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh'
-export interface ThinkingLevelSetRequest { sessionId: string; level: ThinkingLevel }
+export interface ThinkingLevelSetRequest {
+  sessionId: string
+  sessionFile?: string
+  level: ThinkingLevel
+}
 export interface ThinkingLevelSetResponse { level: string }
 
 // ── Commands ──

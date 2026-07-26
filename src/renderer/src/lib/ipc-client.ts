@@ -1,5 +1,6 @@
 import type { AppEvent } from '@shared/app-events'
 import type { AppUpdateAvailableInfo, AppUpdateDownloadProgress } from '@shared/app-update'
+import type { WorkerExitInfo } from '@renderer/lib/worker-exit-runtime'
 
 declare global {
   interface Window {
@@ -8,7 +9,7 @@ declare global {
       invoke: (channel: string, request?: any) => Promise<any>
       getPathForFile: (file: File) => string
       onEvent: (callback: (event: AppEvent) => void) => () => void
-      onWorkerExit: (callback: (info: { code: number; cwd: string }) => void) => () => void
+      onWorkerExit: (callback: (info: WorkerExitInfo) => void) => () => void
       onAutoOpened: (callback: (info: { workspaceId: string }) => void) => () => void
       onExtensionUIRequest: (callback: (request: unknown) => void) => () => void
       onExtensionUIDismiss: (callback: (payload: { type: string; id?: string; reason?: string }) => void) => () => void
@@ -41,7 +42,7 @@ export function onAppEvent(callback: (event: AppEvent) => void): () => void {
   return window.piDesktop.onEvent(callback)
 }
 
-export function onWorkerExit(callback: (info: { code: number; cwd: string }) => void): () => void {
+export function onWorkerExit(callback: (info: WorkerExitInfo) => void): () => void {
   if (!window.piDesktop) return () => {}
   return window.piDesktop.onWorkerExit(callback)
 }
