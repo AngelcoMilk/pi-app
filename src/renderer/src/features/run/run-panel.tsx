@@ -361,7 +361,7 @@ export function RunPanel() {
             </div>
             <div className="mt-2 flex items-center justify-between border-t border-border/30 pt-2">
               <span className="text-[12px] text-foreground-secondary">{t('run:cost')}</span>
-              <span className="font-mono text-[13px] font-semibold tabular-nums">
+              <span className="font-mono text-[13px] tabular-nums text-foreground">
                 ${runState.usage.cost.toFixed(4)}
               </span>
             </div>

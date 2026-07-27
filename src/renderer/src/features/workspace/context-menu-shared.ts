@@ -1,10 +1,14 @@
 import { useEffect, useRef, type RefObject } from 'react'
 
-export const contextMenuItemClass =
-  'w-full cursor-pointer px-3 py-2 text-left text-[13px] text-foreground transition-colors hover:bg-accent hover:text-accent-foreground active:bg-accent/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-border'
+const contextMenuItemBase =
+  'flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-base transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-border'
+
+export const contextMenuItemClass = `${contextMenuItemBase} text-foreground hover:bg-accent hover:text-accent-foreground active:bg-accent/90`
+
+export const contextMenuDangerItemClass = `${contextMenuItemBase} text-destructive hover:bg-destructive/10 active:bg-destructive/15`
 
 export const contextMenuPanelClass =
-  'electron-no-drag fixed z-[500] min-w-[140px] overflow-hidden rounded-lg border border-border bg-popover py-1 text-popover-foreground shadow-lg'
+  'electron-no-drag fixed z-[500] min-w-[160px] overflow-hidden rounded-lg border border-border bg-popover py-1 text-popover-foreground shadow-lg'
 
 export function useDismissContextMenu(
   open: boolean,

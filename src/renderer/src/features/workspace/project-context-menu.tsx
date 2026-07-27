@@ -1,11 +1,13 @@
 import { useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
+import { FolderOpen, ListX } from 'lucide-react'
 import { ipcClient } from '@renderer/lib/ipc-client'
 import { useUIStore } from '@renderer/stores/ui-store'
 import { activateWorkspace } from '@renderer/lib/activate-workspace'
 import { toast } from 'sonner'
 import {
+  contextMenuDangerItemClass,
   contextMenuItemClass,
   contextMenuPanelClass,
   useDismissContextMenu,
@@ -94,17 +96,19 @@ export function ProjectContextMenuPortal({
           void runRevealInExplorer(menu.path)
         }}
       >
+        <FolderOpen className="h-3 w-3 shrink-0" strokeWidth={2} />
         {t('common:sidebar.revealInExplorer')}
       </button>
       <button
         type="button"
-        className={`${contextMenuItemClass} text-red-600 dark:text-red-400 hover:bg-red-500/15 hover:text-red-700 dark:hover:text-red-300`}
+        className={contextMenuDangerItemClass}
         onPointerDown={(e) => e.stopPropagation()}
         onClick={(e) => {
           e.stopPropagation()
           void runRemove(menu.path, menu.name)
         }}
       >
+        <ListX className="h-3 w-3 shrink-0" strokeWidth={2} />
         {t('common:sidebar.removeFromList')}
       </button>
     </div>,

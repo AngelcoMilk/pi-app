@@ -152,7 +152,7 @@ export function ModelPicker() {
                     className="settings-chevron h-4 w-4 shrink-0 text-muted-foreground"
                     data-open={openGroup}
                   />
-                  <span className="min-w-0 flex-1 truncate font-mono text-[12px] font-semibold">{provider}</span>
+                  <span className="min-w-0 flex-1 truncate font-mono text-[12px] text-foreground">{provider}</span>
                   <span className="shrink-0 tabular-nums text-[10px] text-muted-foreground">
                     {t('composer:providerModelCount', { count: rows.length })}
                   </span>
@@ -178,7 +178,7 @@ export function ModelPicker() {
                           >
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-2">
-                                <span className="font-mono text-[12px] font-medium">{m.id}</span>
+                                <span className="font-mono text-[12px]">{m.id}</span>
                                 {!m.available && (
                                   <span className="rounded bg-muted px-1 py-0.5 text-[9px] text-muted-foreground">
                                     {t('composer:unavailable')}

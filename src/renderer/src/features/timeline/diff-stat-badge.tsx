@@ -16,7 +16,7 @@ export function DiffStatBadge({
   return (
     <span
       className={cn(
-        'inline-flex shrink-0 items-center gap-1.5 font-mono text-[11px] font-medium tabular-nums leading-none',
+        'inline-flex shrink-0 items-center gap-1.5 font-mono text-[11px] tabular-nums leading-none',
         className,
       )}
     >

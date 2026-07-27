@@ -1,10 +1,12 @@
 import { useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
+import { Pencil, Trash2 } from 'lucide-react'
 import { ipcClient } from '@renderer/lib/ipc-client'
 import { useUIStore } from '@renderer/stores/ui-store'
 import { toast } from 'sonner'
 import {
+  contextMenuDangerItemClass,
   contextMenuItemClass,
   contextMenuPanelClass,
   useDismissContextMenu,
@@ -63,11 +65,11 @@ export function SandboxContextMenuPortal({
           useUIStore.getState().loadHistoryItems([])
           useUIStore.getState().setHistoryMeta(0, 0, null)
         }
-        toast.success('已删除')
+        toast.success(t('common:sidebar.deleted'))
         onListChange()
-      } else toast.error('删除失败')
+      } else toast.error(t('common:sidebar.deleteFailed'))
     } catch (e) {
-      toast.error('删除失败')
+      toast.error(t('common:sidebar.deleteFailed'))
     }
     onClose()
   }
@@ -95,18 +97,20 @@ export function SandboxContextMenuPortal({
                   onClose()
                 }}
               >
-                重命名
+                <Pencil className="h-3 w-3 shrink-0" strokeWidth={2} />
+                {t('common:sidebar.rename')}
               </button>
               <button
                 type="button"
-                className={`${itemClass} text-red-600 dark:text-red-400 hover:bg-red-500/15 hover:text-red-700 dark:hover:text-red-300`}
+                className={contextMenuDangerItemClass}
                 onPointerDown={(e) => e.stopPropagation()}
                 onClick={(e) => {
                   e.stopPropagation()
                   void runDelete(menu.path, menu.label)
                 }}
               >
-                删除
+                <Trash2 className="h-3 w-3 shrink-0" strokeWidth={2} />
+                {t('common:sidebar.delete')}
               </button>
             </div>,
             document.body,
@@ -114,7 +118,7 @@ export function SandboxContextMenuPortal({
         : null}
       <RenamePromptDialog
         open={!!renameState}
-        title="重命名临时对话"
+        title={t('common:sidebar.renameTempChat')}
         defaultValue={renameState?.label ?? ''}
         onConfirm={submitRename}
         onCancel={() => setRenameState(null)}

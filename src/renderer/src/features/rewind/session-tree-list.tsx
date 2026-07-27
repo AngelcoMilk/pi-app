@@ -1,4 +1,4 @@
-import { Bot, GitBranch, MessageSquare, Sparkles, Wrench } from 'lucide-react'
+import { ArrowLeft, Bot, GitBranch, MessageSquare, Sparkles, Wrench } from 'lucide-react'
 import { useMemo, type ReactNode } from 'react'
 import { cn } from '@renderer/lib/utils'
 import { buildGitLaneLayout } from './session-tree-git-lanes'
@@ -145,7 +145,10 @@ export function SessionTreeList({
                   >
                     {sessionTreeLineTitle(n)}
                     {n.isLeaf && (
-                      <span className="ml-1.5 whitespace-nowrap text-[10px] text-primary">← 当前</span>
+                      <span className="ml-1.5 inline-flex items-center gap-0.5 whitespace-nowrap text-[10px] text-primary">
+                        <ArrowLeft className="h-3 w-3" strokeWidth={2} />
+                        当前
+                      </span>
                     )}
                   </span>
                 </span>

@@ -41,7 +41,7 @@ function FileTypeGlyph({ path }: { path: string }) {
     <span
       className={cn(
         'inline-flex h-4 min-w-[1.125rem] shrink-0 items-center justify-center rounded-[3px]',
-        'bg-sky-500/12 px-0.5 font-mono text-[9px] font-semibold leading-none tracking-tight',
+        'bg-sky-500/12 px-0.5 font-mono text-[9px] leading-none tracking-tight',
         'text-sky-700 dark:bg-sky-400/15 dark:text-sky-300',
       )}
       aria-hidden

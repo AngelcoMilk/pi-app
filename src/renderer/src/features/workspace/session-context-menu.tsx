@@ -1,9 +1,12 @@
 import { useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useTranslation } from 'react-i18next'
+import { Pencil, Trash2 } from 'lucide-react'
 import { ipcClient } from '@renderer/lib/ipc-client'
 import { useUIStore } from '@renderer/stores/ui-store'
 import { toast } from 'sonner'
 import {
+  contextMenuDangerItemClass,
   contextMenuItemClass,
   contextMenuPanelClass,
   useDismissContextMenu,
@@ -25,6 +28,7 @@ export function SessionContextMenuPortal({
   onSessionsChange: () => void
 }) {
   const ref = useRef<HTMLDivElement>(null)
+  const { t } = useTranslation()
   const [renameTarget, setRenameTarget] = useState<SessionMenuTarget | null>(null)
 
   useDismissContextMenu(!!menu, ref, onClose)
@@ -35,7 +39,7 @@ export function SessionContextMenuPortal({
     const target = renameTarget
     if (!target) return
     if (!target.sessionFile) {
-      toast.error('无法重命名：缺少会话文件路径')
+      toast.error(t('common:sidebar.renameMissingFile'))
       setRenameTarget(null)
       return
     }
@@ -47,23 +51,23 @@ export function SessionContextMenuPortal({
         workspaceId: target.workspacePath,
       })
       if (r?.ok) {
-        toast.success('已重命名')
+        toast.success(t('common:sidebar.renamed'))
         refreshList()
         setRenameTarget(null)
-      } else toast.error(r?.error || '重命名失败')
+      } else toast.error(r?.error || t('common:sidebar.renameFailed'))
     } catch (e) {
-      toast.error('重命名失败')
+      toast.error(t('common:sidebar.renameFailed'))
     }
   }
 
   const runDelete = async (target: SessionMenuTarget) => {
     const defaultTitle = target.title || target.sessionId.slice(0, 8)
     if (!target.sessionFile) {
-      toast.error('无法删除：缺少会话文件路径')
+      toast.error(t('common:sidebar.deleteMissingFile'))
       onClose()
       return
     }
-    if (!window.confirm(`删除会话「${defaultTitle}」？对应的 pi 会话文件将永久删除。`)) {
+    if (!window.confirm(t('common:sidebar.deleteSessionConfirm', { name: defaultTitle }))) {
       onClose()
       return
     }
@@ -81,11 +85,11 @@ export function SessionContextMenuPortal({
           useUIStore.getState().setHistoryMeta(0, 0, null)
           void ipcClient.invoke('session.setPendingBind', { sessionFile: null })
         }
-        toast.success('已删除')
+        toast.success(t('common:sidebar.deleted'))
         refreshList()
-      } else toast.error(r?.error || '删除失败')
+      } else toast.error(r?.error || t('common:sidebar.deleteFailed'))
     } catch (e) {
-      toast.error('删除失败')
+      toast.error(t('common:sidebar.deleteFailed'))
     }
     onClose()
   }
@@ -115,18 +119,20 @@ export function SessionContextMenuPortal({
                   onClose()
                 }}
               >
-                重命名
+                <Pencil className="h-3 w-3 shrink-0" strokeWidth={2} />
+                {t('common:sidebar.rename')}
               </button>
               <button
                 type="button"
-                className={`${itemClass} text-red-600 dark:text-red-400 hover:bg-red-500/15 hover:text-red-700 dark:hover:text-red-300`}
+                className={contextMenuDangerItemClass}
                 onPointerDown={(e) => e.stopPropagation()}
                 onClick={(e) => {
                   e.stopPropagation()
                   void runDelete(menu.target)
                 }}
               >
-                删除
+                <Trash2 className="h-3 w-3 shrink-0" strokeWidth={2} />
+                {t('common:sidebar.delete')}
               </button>
             </div>,
             document.body,
@@ -134,7 +140,7 @@ export function SessionContextMenuPortal({
         : null}
       <RenamePromptDialog
         open={!!renameTarget}
-        title="重命名会话"
+        title={t('common:sidebar.renameSession')}
         defaultValue={renameDefault}
         onConfirm={submitRename}
         onCancel={() => setRenameTarget(null)}

@@ -8,7 +8,7 @@ import { sanitizeHtml } from '@renderer/lib/sanitize'
 import { ipcClient } from '@renderer/lib/ipc-client'
 import { useUIStore } from '@renderer/stores/ui-store'
 import { syntaxHighlight } from '@renderer/lib/syntax-highlight'
-import { FileText } from 'lucide-react'
+import { Check, FileText, X } from 'lucide-react'
 import { renderNativeToolPreview } from './tool-previews'
 import { applyToolCardFields } from '@extension-compat/json-path'
 import { resolveToolCardDef } from './tool-card-registry'
@@ -175,8 +175,18 @@ const TreeTemplate: ToolCardComponent = ({ item }) => {
       {progressSummary && (
         <div className="flex gap-3 text-[10px] tabular-nums text-muted-foreground">
           {progressSummary.running != null && <span>{progressSummary.running}</span>}
-          {progressSummary.completed != null && <span>✓{progressSummary.completed}</span>}
-          {progressSummary.failed != null && progressSummary.failed > 0 && <span>!{progressSummary.failed}</span>}
+          {progressSummary.completed != null && (
+            <span className="inline-flex items-center gap-0.5">
+              <Check className="h-3 w-3" strokeWidth={2} />
+              {progressSummary.completed}
+            </span>
+          )}
+          {progressSummary.failed != null && progressSummary.failed > 0 && (
+            <span className="inline-flex items-center gap-0.5">
+              <X className="h-3 w-3" strokeWidth={2} />
+              {progressSummary.failed}
+            </span>
+          )}
         </div>
       )}
       <div className="space-y-1">

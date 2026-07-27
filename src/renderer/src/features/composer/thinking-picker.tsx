@@ -71,7 +71,7 @@ export function ThinkingPicker() {
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="font-mono text-[12px] font-medium uppercase">{lv.label}</span>
+                    <span className="font-mono text-[12px] uppercase">{lv.label}</span>
                   </div>
                   <div className="text-[11px] text-muted-foreground/60">{lv.desc}</div>
                 </div>
