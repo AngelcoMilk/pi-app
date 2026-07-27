@@ -149,8 +149,8 @@
     --surface-3: 240 5.9% 92%;
     --surface-sidebar: #F3F3F3;
 
-    /* Secondary text (参考桌面客户端) */
-    --text-secondary-hsl: 240 5% 35%;
+    /* Secondary text — 与 --muted-foreground 同值，次级灰单一来源 */
+    --text-secondary-hsl: 240 3.8% 46.1%;
 
     /* Accent colors for tool types */
     --tool-read: 220 90% 56%;
@@ -517,16 +517,6 @@
       border-color 320ms ease,
       opacity 200ms ease;
   }
-  .panel-width-animate.sidebar-collapsed .sidebar-content-fade {
-    opacity: 0;
-    transition: opacity 180ms ease;
-  }
-  .sidebar-content-fade {
-    transition: opacity 280ms ease;
-  }
-  .sidebar-collapsed .sidebar-content-fade {
-    opacity: 1;
-  }
   .sidebar-label-fade {
     overflow: hidden;
     white-space: nowrap;
@@ -536,20 +526,6 @@
     transform-origin: left center;
     max-width: 240px;
     opacity: 1;
-  }
-  .sidebar-collapsed .sidebar-label-fade {
-    max-width: 0;
-    opacity: 0;
-    margin-inline: 0;
-    transform: translateX(-6px);
-    pointer-events: none;
-  }
-  .sidebar-icon-fade {
-    transition: opacity var(--motion-fast) var(--motion-ease), transform var(--motion-fast) var(--motion-ease);
-  }
-  .sidebar-collapsed .sidebar-icon-only {
-    opacity: 1;
-    transform: scale(1);
   }
   /* Tool / group expand：默认瞬时，避免时间线大量工具卡同时做高度动画 */
   .expand-panel {
@@ -587,16 +563,6 @@
     transform: translateY(0) scaleY(1);
     opacity: 1;
   }
-  @keyframes sidebar-tree-in {
-    from {
-      opacity: 0;
-      transform: translateY(-4px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
   @media (prefers-reduced-motion: reduce) {
     .sidebar-collapse {
       transition: none !important;
@@ -623,9 +589,6 @@
   }
   .chevron-expand[data-open='true'] {
     transform: rotate(90deg);
-  }
-  .sidebar-project-row .nav-row {
-    border-radius: var(--radius-md);
   }
   .sidebar-project-hit {
     cursor: pointer;
@@ -682,8 +645,44 @@
   .nav-row:hover {
     background-color: var(--bg-hover);
   }
+  .nav-row:active {
+    transform: scale(0.99);
+  }
   .nav-row-active {
     background-color: var(--bg-active) !important;
+  }
+  /* 选中指示条：3px 品牌条，light 下 bg-active 与侧栏底色差极小时的主要焦点线索 */
+  .nav-row.nav-row-active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 3px;
+    height: 60%;
+    transform: translateY(-50%);
+    border-radius: 9999px;
+    background: var(--brand);
+    animation: nav-indicator-in var(--motion-normal) var(--motion-ease);
+  }
+  @keyframes nav-indicator-in {
+    from {
+      height: 0;
+      opacity: 0;
+    }
+    to {
+      height: 60%;
+      opacity: 1;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .nav-row.nav-row-active::before {
+      animation: none;
+    }
+  }
+  /* 列表行（div role=button）的可见焦点态，与右键菜单条目一致 */
+  .nav-focus-ring:focus-visible {
+    outline: none;
+    box-shadow: inset 0 0 0 1px var(--focus-border);
   }
   .chrome-icon-btn {
     transition:
@@ -1242,6 +1241,8 @@
   }
   .font-mono {
     font-family: var(--font-mono);
+    /* Geist Mono 只有 400，禁止浏览器合成粗体 */
+    font-synthesis: none;
   }
 
   /* Selection: soft, VS Code-like (not high-contrast flash) */

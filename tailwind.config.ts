@@ -12,6 +12,16 @@ const config: Config = {
         sans: ['var(--font-sans)'],
         mono: ['var(--font-mono)'],
       },
+      // UI type scale：13px 为界面主字号（VS Code 同款），新代码禁用 text-[Npx]
+      fontSize: {
+        '2xs': ['10px', { lineHeight: '14px' }],
+        xs: ['11px', { lineHeight: '16px' }],
+        sm: ['12px', { lineHeight: '18px' }],
+        base: ['13px', { lineHeight: '20px' }],
+        lg: ['14px', { lineHeight: '22px' }],
+        xl: ['16px', { lineHeight: '24px' }],
+        '2xl': ['20px', { lineHeight: '28px' }],
+      },
       colors: {
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
@@ -51,7 +61,7 @@ const config: Config = {
         'surface-1': 'hsl(var(--surface-1))',
         'surface-2': 'hsl(var(--surface-2))',
         'surface-3': 'hsl(var(--surface-3))',
-        'surface-sidebar': 'hsl(var(--surface-sidebar))',
+        'surface-sidebar': 'var(--surface-sidebar)',
         // Secondary text token (桌面 Agent UI-inspired: readable but not loud)
         'foreground-secondary': 'hsl(var(--text-secondary-hsl))',
         // 桌面 Agent UI AOU brand palette
