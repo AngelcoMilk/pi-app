@@ -15,8 +15,12 @@ vi.mock('@renderer/lib/session-display-meta', () => ({
 }))
 
 import { captureVisibleLiveSessionTimeline } from '@renderer/lib/capture-live-session-timeline'
-import { clearLiveSessionTimeline } from '@renderer/lib/live-session-timeline-cache'
 import {
+  clearLiveSessionTimeline,
+  saveLiveSessionTimeline,
+} from '@renderer/lib/live-session-timeline-cache'
+import {
+  bindViewToUiStore,
   clearSessionShellForTests,
   focusSessionSync,
   hydrateSessionView,
@@ -93,6 +97,70 @@ describe('session shell stream switch race', () => {
       fileChanges: [],
       ignoreQueueSyncUntil: 0,
     })
+  })
+
+  it('should_bind_remapped_stream_id_that_exists_in_session_view', () => {
+    saveLiveSessionTimeline({
+      sessionId: 'session-a',
+      sessionFile: sessionA,
+      timelineItems: [
+        {
+          id: 'live-assistant',
+          type: 'assistant-message',
+          text: 'live',
+          runId: 'run-a',
+          turnId: 'turn-a',
+          timestamp: 3,
+        },
+      ],
+      streamingAssistantId: 'live-assistant',
+      runState: { status: 'running', activeRunId: 'run-a', toolCount: 0, errorCount: 0 },
+      pendingSteering: [],
+      pendingFollowUp: [],
+      optimisticPendingUserText: null,
+      agentTurnBootstrapping: false,
+    })
+
+    bindViewToUiStore({
+      sessionKey: sessionA,
+      sessionId: 'session-a',
+      items: [
+        {
+          id: 'disk-user',
+          type: 'user-message',
+          text: 'question',
+          turnId: 'turn-a',
+          timestamp: 1,
+        },
+        {
+          id: 'disk-assistant',
+          type: 'assistant-message',
+          text: 'richer disk partial',
+          runId: 'run-a',
+          turnId: 'turn-a',
+          timestamp: 2,
+        },
+      ],
+      historyTotal: 2,
+      historyLoaded: 2,
+      runUI: 'running',
+      streamingAssistantId: 'live-assistant',
+      optimisticPendingUserText: null,
+      agentTurnBootstrapping: false,
+      pendingSteering: [],
+      pendingFollowUp: [],
+      phase: 'cached',
+      lastFocusedAt: 1,
+    })
+
+    const state = useUIStore.getState()
+    expect(state.streamingAssistantId).toBe('disk-assistant')
+    expect(
+      state.timelineItems.some(
+        (item) =>
+          item.type === 'assistant-message' && item.id === state.streamingAssistantId,
+      ),
+    ).toBe(true)
   })
 
   it('should_honor_background_tool_boundary_when_switching_back', () => {
@@ -223,6 +291,268 @@ describe('session shell stream switch race', () => {
     expect(items.find((item) => item.toolCallId === 'tool-a')).toBeDefined()
     expect(items.at(-1)?.text).toBe('after tool')
     expect(useUIStore.getState().streamingAssistantId).toBe(items.at(-1)?.id)
+  })
+
+  it('should_keep_background_follow_up_when_stale_hydrate_resolves_after_switch_back', async () => {
+    captureVisibleLiveSessionTimeline()
+    focusSessionSync('session-b', sessionB)
+
+    useUIStore.getState().processEvent({
+      type: 'message',
+      role: 'assistant',
+      phase: 'end',
+      text: 'first complete answer',
+      sessionEntryId: 'assistant-entry-a',
+      seq: 1,
+      workspaceId: '/workspace',
+      sessionId: 'session-a',
+      sessionFile: sessionA,
+      runId: 'run-a',
+      timestamp: 3,
+    })
+    useUIStore.getState().processEvent({
+      type: 'message',
+      role: 'user',
+      phase: 'start',
+      text: 'queued follow-up',
+      seq: 2,
+      workspaceId: '/workspace',
+      sessionId: 'session-a',
+      sessionFile: sessionA,
+      runId: 'run-a',
+      timestamp: 4,
+    })
+    useUIStore.getState().processEvent({
+      type: 'message',
+      role: 'user',
+      phase: 'end',
+      sessionEntryId: 'user-entry-follow-up',
+      seq: 3,
+      workspaceId: '/workspace',
+      sessionId: 'session-a',
+      sessionFile: sessionA,
+      runId: 'run-a',
+      timestamp: 5,
+    })
+    useUIStore.getState().processEvent({
+      type: 'message',
+      role: 'assistant',
+      phase: 'start',
+      seq: 4,
+      workspaceId: '/workspace',
+      sessionId: 'session-a',
+      sessionFile: sessionA,
+      runId: 'run-a',
+      timestamp: 6,
+    })
+    useUIStore.getState().processEvent({
+      type: 'message',
+      role: 'assistant',
+      phase: 'delta',
+      contentKind: 'text',
+      text: 'second answer streaming',
+      seq: 5,
+      workspaceId: '/workspace',
+      sessionId: 'session-a',
+      sessionFile: sessionA,
+      runId: 'run-a',
+      timestamp: 7,
+    })
+
+    focusSessionSync('session-a', sessionA)
+    const history = deferred<{
+      items: Array<Record<string, unknown>>
+      sourceCount: number
+      totalCount: number
+    }>()
+    historyMock.fetch.mockReturnValueOnce(history.promise)
+    const hydration = hydrateSessionView(sessionA, 'session-a')
+
+    history.resolve({
+      items: [
+        {
+          id: 'disk-user-a',
+          type: 'user-message',
+          text: 'question',
+          sessionEntryId: 'user-entry-a',
+          timestamp: 1,
+        },
+      ],
+      sourceCount: 1,
+      totalCount: 1,
+    })
+    await hydration
+
+    const items = useUIStore.getState().timelineItems
+    expect(items.map((item) => [item.type, item.text])).toEqual([
+      ['user-message', 'question'],
+      ['assistant-message', 'first complete answer'],
+      ['user-message', 'queued follow-up'],
+      ['assistant-message', 'second answer streaming'],
+    ])
+    expect(useUIStore.getState().streamingAssistantId).toBe(items[3]?.id)
+  })
+
+  it('should_reject_stale_no_user_tail_from_prior_queued_turn_on_late_hydrate', async () => {
+    useUIStore.setState({
+      timelineItems: [
+        {
+          id: 'user-a',
+          type: 'user-message',
+          text: 'question',
+          sessionEntryId: 'user-entry-a',
+          turnId: 'turn-1',
+          timestamp: 1,
+        },
+        {
+          id: 'assistant-a1',
+          type: 'assistant-message',
+          text: 'first answer',
+          sessionEntryId: 'assistant-entry-a',
+          turnId: 'turn-1',
+          runId: 'run-a',
+          timestamp: 2,
+        },
+      ],
+      streamingAssistantId: null,
+    })
+    captureVisibleLiveSessionTimeline()
+    focusSessionSync('session-b', sessionB)
+
+    useUIStore.getState().processEvent({
+      type: 'message',
+      role: 'user',
+      phase: 'start',
+      text: 'queued follow-up',
+      turnId: 'turn-2',
+      runId: 'run-a',
+      seq: 1,
+      workspaceId: '/workspace',
+      sessionId: 'session-a',
+      sessionFile: sessionA,
+      timestamp: 3,
+    })
+    useUIStore.getState().processEvent({
+      type: 'message',
+      role: 'user',
+      phase: 'end',
+      sessionEntryId: 'user-entry-follow-up',
+      turnId: 'turn-2',
+      runId: 'run-a',
+      seq: 2,
+      workspaceId: '/workspace',
+      sessionId: 'session-a',
+      sessionFile: sessionA,
+      timestamp: 4,
+    })
+    useUIStore.getState().processEvent({
+      type: 'message',
+      role: 'assistant',
+      phase: 'start',
+      turnId: 'turn-2',
+      runId: 'run-a',
+      seq: 3,
+      workspaceId: '/workspace',
+      sessionId: 'session-a',
+      sessionFile: sessionA,
+      timestamp: 5,
+    })
+    useUIStore.getState().processEvent({
+      type: 'message',
+      role: 'assistant',
+      phase: 'delta',
+      contentKind: 'text',
+      text: 'second answer streaming',
+      turnId: 'turn-2',
+      runId: 'run-a',
+      seq: 4,
+      workspaceId: '/workspace',
+      sessionId: 'session-a',
+      sessionFile: sessionA,
+      timestamp: 6,
+    })
+
+    focusSessionSync('session-a', sessionA)
+    const current = useUIStore.getState()
+    const currentAssistant = current.timelineItems.at(-1)
+    expect(currentAssistant).toMatchObject({
+      type: 'assistant-message',
+      text: 'second answer streaming',
+      turnId: 'turn-2',
+    })
+
+    clearLiveSessionTimeline(sessionA)
+    saveLiveSessionTimeline({
+      sessionId: 'session-a',
+      sessionFile: sessionA,
+      timelineItems: [
+        {
+          id: 'stale-assistant-a1',
+          type: 'assistant-message',
+          text: 'stale first answer tail',
+          turnId: 'turn-1',
+          runId: 'run-a',
+          timestamp: 7,
+        },
+        {
+          id: 'stale-tool-a1',
+          type: 'tool-call',
+          toolCallId: 'stale-tool',
+          toolName: 'read',
+          toolPhase: 'end',
+          turnId: 'turn-1',
+          runId: 'run-a',
+          timestamp: 8,
+        },
+      ],
+      streamingAssistantId: 'stale-assistant-a1',
+      runState: { status: 'running', activeRunId: 'run-a', toolCount: 1, errorCount: 0 },
+      pendingSteering: [],
+      pendingFollowUp: [],
+      optimisticPendingUserText: null,
+      agentTurnBootstrapping: false,
+    })
+
+    const history = deferred<{
+      items: Array<Record<string, unknown>>
+      sourceCount: number
+      totalCount: number
+    }>()
+    historyMock.fetch.mockReturnValueOnce(history.promise)
+    const hydration = hydrateSessionView(sessionA, 'session-a')
+    history.resolve({
+      items: [
+        {
+          id: 'disk-user-a',
+          type: 'user-message',
+          text: 'question',
+          sessionEntryId: 'user-entry-a',
+          turnId: 'turn-1',
+          timestamp: 1,
+        },
+        {
+          id: 'disk-assistant-a1',
+          type: 'assistant-message',
+          text: 'first answer',
+          sessionEntryId: 'assistant-entry-a',
+          turnId: 'turn-1',
+          timestamp: 2,
+        },
+      ],
+      sourceCount: 2,
+      totalCount: 2,
+    })
+    await hydration
+
+    const state = useUIStore.getState()
+    expect(state.timelineItems.map((item) => [item.type, item.text])).toEqual([
+      ['user-message', 'question'],
+      ['assistant-message', 'first answer'],
+      ['user-message', 'queued follow-up'],
+      ['assistant-message', 'second answer streaming'],
+    ])
+    expect(state.timelineItems.some((item) => item.toolCallId === 'stale-tool')).toBe(false)
+    expect(state.streamingAssistantId).toBe(currentAssistant?.id)
   })
 
   it('should_keep_visible_terminal_message_when_hydrate_finishes_late', async () => {

@@ -3,7 +3,7 @@ import type { LiveSessionTimelineSnapshot } from '@renderer/lib/live-session-tim
 import { mergeLiveTimelineWithHistoryTail } from '@renderer/lib/merge-live-history-timeline'
 import {
   applyLiveStreamingTextToMergedTimeline,
-  lastAssistantItem,
+  resolveMergedStreamingAssistantId,
 } from '@renderer/lib/streaming-timeline-preserve'
 import { projectTimelineItems } from '@shared/timeline-projection'
 import type { TimelineSyncCursor } from '@shared/session-timeline-sync-plan'
@@ -20,12 +20,20 @@ export function mergeLiveActiveSessionDisplay(input: {
   totalCount: number
 } {
   const merged = applyLiveStreamingTextToMergedTimeline(
-    mergeLiveTimelineWithHistoryTail(input.diskItems, input.live.timelineItems),
+    mergeLiveTimelineWithHistoryTail(
+      input.diskItems,
+      input.live.timelineItems,
+      input.live.persistedEntryOverlap,
+    ),
     input.live.timelineItems,
     input.live.streamingAssistantId,
   )
   const displayed = projectTimelineItems(merged)
-  const mergedStreamId = input.live.streamingAssistantId ?? lastAssistantItem(displayed)?.id ?? null
+  const mergedStreamId = resolveMergedStreamingAssistantId(
+    displayed,
+    input.live.timelineItems,
+    input.live.streamingAssistantId,
+  )
   const totalCount = Math.max(input.totalCount, input.cursor.totalCount)
   const historyLoadedCount = Math.min(totalCount, input.cursor.loadedOffsetFromEnd)
   return { displayed, mergedStreamId, historyLoadedCount, totalCount }

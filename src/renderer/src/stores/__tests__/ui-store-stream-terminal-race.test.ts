@@ -238,4 +238,110 @@ describe('foreground stream terminal ordering', () => {
     expect(state.timelineItems.filter((item) => item.type === 'user-message')).toHaveLength(1)
     expect(state.optimisticPendingUserText).toBeNull()
   })
+
+  it('should_bind_turn_id_to_visible_optimistic_message_and_tool_rows', () => {
+    useUIStore.setState({
+      timelineItems: [
+        { id: 'opt-user-turn', type: 'user-message', text: 'question', timestamp: 1 },
+        {
+          id: 'opt-asst-turn',
+          type: 'assistant-message',
+          text: '',
+          thinkingText: '',
+          timestamp: 2,
+        },
+      ],
+      streamingAssistantId: 'opt-asst-turn',
+      optimisticPendingUserText: 'question',
+    })
+
+    useUIStore.getState().processEvent({
+      type: 'message',
+      role: 'user',
+      phase: 'start',
+      text: 'question',
+      turnId: 'turn-1',
+      runId: 'run-1',
+      seq: 8,
+      workspaceId: '/workspace',
+      sessionFile: '/workspace/session.jsonl',
+      timestamp: 10,
+    })
+    useUIStore.getState().processEvent({
+      type: 'message',
+      role: 'user',
+      phase: 'end',
+      sessionEntryId: 'user-entry-turn',
+      turnId: 'turn-1',
+      runId: 'run-1',
+      seq: 9,
+      workspaceId: '/workspace',
+      sessionFile: '/workspace/session.jsonl',
+      timestamp: 11,
+    })
+    useUIStore.getState().processEvent({
+      type: 'message',
+      role: 'assistant',
+      phase: 'start',
+      turnId: 'turn-1',
+      runId: 'run-1',
+      seq: 10,
+      workspaceId: '/workspace',
+      sessionFile: '/workspace/session.jsonl',
+      timestamp: 12,
+    })
+    useUIStore.getState().processEvent({
+      type: 'message',
+      role: 'assistant',
+      phase: 'end',
+      text: 'answer',
+      sessionEntryId: 'assistant-entry-turn',
+      turnId: 'turn-1',
+      runId: 'run-1',
+      seq: 11,
+      workspaceId: '/workspace',
+      sessionFile: '/workspace/session.jsonl',
+      timestamp: 13,
+    })
+    useUIStore.getState().processEvent({
+      type: 'tool',
+      phase: 'start',
+      toolCallId: 'tool-turn',
+      toolName: 'read',
+      input: {},
+      turnId: 'turn-1',
+      runId: 'run-1',
+      seq: 12,
+      workspaceId: '/workspace',
+      sessionFile: '/workspace/session.jsonl',
+      timestamp: 14,
+    })
+    useUIStore.getState().processEvent({
+      type: 'tool',
+      phase: 'end',
+      toolCallId: 'tool-turn',
+      toolName: 'read',
+      output: 'ok',
+      turnId: 'turn-1',
+      runId: 'run-1',
+      seq: 13,
+      workspaceId: '/workspace',
+      sessionFile: '/workspace/session.jsonl',
+      timestamp: 15,
+    })
+
+    const rows = useUIStore.getState().timelineItems
+    expect(rows.find((item) => item.id === 'opt-user-turn')).toMatchObject({
+      turnId: 'turn-1',
+      sessionEntryId: 'user-entry-turn',
+    })
+    expect(rows.find((item) => item.id === 'opt-asst-turn')).toMatchObject({
+      turnId: 'turn-1',
+      sessionEntryId: 'assistant-entry-turn',
+    })
+    expect(rows.find((item) => item.toolCallId === 'tool-turn')).toMatchObject({
+      turnId: 'turn-1',
+      toolPhase: 'end',
+    })
+  })
 })

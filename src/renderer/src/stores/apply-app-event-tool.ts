@@ -29,6 +29,7 @@ export function handleTool(event: ToolEvent, api: StoreApi): void {
       toolPhase: 'start' as const,
       toolArgs: event.input,
       runId: event.runId,
+      turnId: event.turnId,
       timestamp: event.timestamp,
     }
     const streamId = state.streamingAssistantId
@@ -59,7 +60,14 @@ export function handleTool(event: ToolEvent, api: StoreApi): void {
     const items = state.timelineItems
     const lastTool = findLiveToolRowByCallId(items, event.toolCallId)
     const line = extractStatusFromOutput(event.output, resolveToolCardDef(event.toolName)?.statusField)
-    if (lastTool?.id && line) state.updateTimelineItem(lastTool.id, { toolPhase: 'update', toolStatusLine: line })
+    if (lastTool?.id && line) {
+      state.updateTimelineItem(lastTool.id, {
+        toolPhase: 'update',
+        toolStatusLine: line,
+        runId: event.runId,
+        turnId: event.turnId,
+      })
+    }
     if (line) state.setRunState({ activeTool: event.toolName, activeToolStatus: line })
     return
   }
@@ -82,6 +90,8 @@ export function handleTool(event: ToolEvent, api: StoreApi): void {
         toolStatusLine: undefined,
         extensionUiSuspended: false,
         extensionUiRequestId: undefined,
+        runId: event.runId,
+        turnId: event.turnId,
         isError: event.isError,
       })
     }

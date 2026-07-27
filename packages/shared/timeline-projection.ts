@@ -1,19 +1,12 @@
 import type { ProjectableTimelineItem } from './timeline-projection-types'
 
-/**
- * Whether two adjacent assistant rows belong to the same agent turn and may be
- * concatenated. Missing runId used to mean "always merge", which glued separate
- * turns together after session switch-back (user/assistant misalignment).
- */
-function sameRun(a: ProjectableTimelineItem, b: ProjectableTimelineItem): boolean {
-  if (a.runId && b.runId) return a.runId === b.runId
-  // Different explicit runs must never merge (one side missing is not "same").
-  if (a.runId || b.runId) return false
-  // Disk rows with distinct JSONL entry ids are separate messages.
+/** Whether adjacent assistant fragments belong to one turn. */
+function sameTurn(a: ProjectableTimelineItem, b: ProjectableTimelineItem): boolean {
+  if (a.turnId && b.turnId) return a.turnId === b.turnId
+  if (a.turnId || b.turnId) return false
   if (a.sessionEntryId && b.sessionEntryId) return a.sessionEntryId === b.sessionEntryId
   if (a.sessionEntryId || b.sessionEntryId) return false
-  // Pure stream fragments without identity: allow adjacent collapse.
-  return true
+  return !a.runId && !b.runId
 }
 
 function mergeAssistant(
@@ -27,6 +20,7 @@ function mergeAssistant(
     text: text || existing.text,
     thinkingText: thinkingText || existing.thinkingText,
     sessionEntryId: incoming.sessionEntryId ?? existing.sessionEntryId,
+    turnId: incoming.turnId ?? existing.turnId,
     timestamp: incoming.timestamp ?? existing.timestamp,
     // Preserve interrupt markers across projection merges
     incomplete: !!(existing.incomplete || incoming.incomplete),
@@ -49,6 +43,7 @@ function mergeTool(
     toolArgs: incoming.toolArgs ?? existing.toolArgs,
     isError: incoming.isError ?? existing.isError,
     sessionEntryId: incoming.sessionEntryId ?? existing.sessionEntryId,
+    turnId: incoming.turnId ?? existing.turnId,
   }
 }
 
@@ -60,7 +55,7 @@ export function projectTimelineItems<T extends ProjectableTimelineItem>(items: T
   const out: T[] = []
   for (const item of items) {
     const prev = out[out.length - 1]
-    if (item.type === 'assistant-message' && prev?.type === 'assistant-message' && sameRun(prev, item)) {
+    if (item.type === 'assistant-message' && prev?.type === 'assistant-message' && sameTurn(prev, item)) {
       out[out.length - 1] = mergeAssistant(prev, item) as T
       continue
     }

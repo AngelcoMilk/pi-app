@@ -159,4 +159,206 @@ describe('mergeLiveTimelineWithHistoryTail', () => {
     expect(merged[2].text).toBe('q2')
     expect(merged.at(-1)?.text).toBe('a2 full after tool')
   })
+
+  it('should_keep_disk_leaf_when_live_diverges_after_shared_user_entry', () => {
+    const hist: TimelineItem[] = [
+      { id: 'h-u1', type: 'user-message', text: 'q1', timestamp: 1, sessionEntryId: 'u1' },
+      {
+        id: 'h-a-new',
+        type: 'assistant-message',
+        text: 'current branch answer',
+        timestamp: 2,
+        sessionEntryId: 'a-new',
+      },
+    ]
+    const live: TimelineItem[] = [
+      { id: 'l-u1', type: 'user-message', text: 'q1', timestamp: 1, sessionEntryId: 'u1' },
+      {
+        id: 'l-a-old',
+        type: 'assistant-message',
+        text: 'stale branch answer',
+        timestamp: 2,
+        sessionEntryId: 'a-old',
+      },
+      { id: 'l-u2', type: 'user-message', text: 'q2', timestamp: 3, sessionEntryId: 'u2' },
+      { id: 'l-a2', type: 'assistant-message', text: 'stale continuation', timestamp: 4 },
+    ]
+
+    const merged = mergeLiveTimelineWithHistoryTail(hist, live)
+
+    expect(merged.map((item) => item.id)).toEqual(['h-u1', 'h-a-new'])
+  })
+
+  it('should_append_bounded_live_tail_when_trimmed_identity_chain_contains_disk_tip', () => {
+    const hist: TimelineItem[] = [
+      { id: 'h-u1', type: 'user-message', text: 'q1', timestamp: 1, sessionEntryId: 'u1' },
+    ]
+    const live: TimelineItem[] = [
+      { id: 'l-u2', type: 'user-message', text: 'q2', timestamp: 3, sessionEntryId: 'u2' },
+      { id: 'l-a2', type: 'assistant-message', text: 'active continuation', timestamp: 4 },
+    ]
+
+    const merged = mergeLiveTimelineWithHistoryTail(hist, live, ['u1', 'a1'])
+
+    expect(merged.map((item) => item.id)).toEqual(['h-u1', 'l-u2', 'l-a2'])
+  })
+
+  it('should_keep_disk_leaf_when_trimmed_overlap_proves_branch_conflict', () => {
+    const hist: TimelineItem[] = [
+      { id: 'h-u1', type: 'user-message', text: 'q1', timestamp: 1, sessionEntryId: 'u1' },
+      {
+        id: 'h-a-new',
+        type: 'assistant-message',
+        text: 'current branch answer',
+        timestamp: 2,
+        sessionEntryId: 'a-new',
+      },
+    ]
+    const live: TimelineItem[] = [
+      { id: 'l-u2', type: 'user-message', text: 'q2', timestamp: 3, sessionEntryId: 'u2' },
+      { id: 'l-a2', type: 'assistant-message', text: 'stale continuation', timestamp: 4 },
+    ]
+
+    const merged = mergeLiveTimelineWithHistoryTail(hist, live, ['u1', 'a-old'])
+
+    expect(merged.map((item) => item.id)).toEqual(['h-u1', 'h-a-new'])
+  })
+
+  it('should_keep_disk_assistant_when_assistant_only_live_tail_has_different_run', () => {
+    const hist: TimelineItem[] = [
+      { id: 'h-u2', type: 'user-message', text: 'q2', sessionEntryId: 'u2', timestamp: 1 },
+      {
+        id: 'h-a2',
+        type: 'assistant-message',
+        text: 'current run partial',
+        runId: 'run-2',
+        timestamp: 2,
+      },
+    ]
+    const live: TimelineItem[] = [
+      {
+        id: 'l-a1',
+        type: 'assistant-message',
+        text: 'stale previous run answer with much longer text',
+        runId: 'run-1',
+        timestamp: 3,
+      },
+    ]
+
+    const merged = mergeLiveTimelineWithHistoryTail(hist, live)
+
+    expect(merged).toEqual(hist)
+  })
+
+  it('should_enrich_assistant_only_live_tail_when_assistant_entry_id_matches', () => {
+    const hist: TimelineItem[] = [
+      { id: 'h-u2', type: 'user-message', text: 'q2', sessionEntryId: 'u2', timestamp: 1 },
+      {
+        id: 'h-a2',
+        type: 'assistant-message',
+        text: '',
+        sessionEntryId: 'a2-entry',
+        timestamp: 2,
+      },
+    ]
+    const live: TimelineItem[] = [
+      {
+        id: 'l-a2',
+        type: 'assistant-message',
+        text: 'completed current answer',
+        sessionEntryId: 'a2-entry',
+        timestamp: 3,
+      },
+    ]
+
+    const merged = mergeLiveTimelineWithHistoryTail(hist, live)
+
+    expect(merged.at(-1)).toMatchObject({
+      id: 'l-a2',
+      text: 'completed current answer',
+      sessionEntryId: 'a2-entry',
+    })
+  })
+
+  it('should_enrich_assistant_only_live_tail_when_turn_id_matches', () => {
+    const hist: TimelineItem[] = [
+      {
+        id: 'h-u2',
+        type: 'user-message',
+        text: 'q2',
+        sessionEntryId: 'u2',
+        turnId: 'turn-2',
+        timestamp: 1,
+      },
+      {
+        id: 'h-a2',
+        type: 'assistant-message',
+        text: 'partial',
+        runId: 'run-shared',
+        turnId: 'turn-2',
+        timestamp: 2,
+      },
+    ]
+    const live: TimelineItem[] = [
+      {
+        id: 'l-a2',
+        type: 'assistant-message',
+        text: 'partial and completed',
+        runId: 'run-shared',
+        turnId: 'turn-2',
+        timestamp: 3,
+      },
+    ]
+
+    const merged = mergeLiveTimelineWithHistoryTail(hist, live)
+
+    expect(merged.at(-1)).toMatchObject({
+      id: 'l-a2',
+      text: 'partial and completed',
+      turnId: 'turn-2',
+    })
+  })
+
+  it('should_reject_same_run_assistant_and_tool_tail_from_different_turn', () => {
+    const hist: TimelineItem[] = [
+      {
+        id: 'h-u2',
+        type: 'user-message',
+        text: 'q2',
+        sessionEntryId: 'u2',
+        turnId: 'turn-2',
+        timestamp: 1,
+      },
+      {
+        id: 'h-a2',
+        type: 'assistant-message',
+        text: 'current partial',
+        runId: 'run-shared',
+        turnId: 'turn-2',
+        timestamp: 2,
+      },
+    ]
+    const staleTail: TimelineItem[] = [
+      {
+        id: 'stale-a1',
+        type: 'assistant-message',
+        text: 'stale answer',
+        runId: 'run-shared',
+        turnId: 'turn-1',
+        timestamp: 3,
+      },
+      {
+        id: 'stale-tool-1',
+        type: 'tool-call',
+        toolCallId: 'stale-tool',
+        toolName: 'read',
+        toolPhase: 'end',
+        runId: 'run-shared',
+        turnId: 'turn-1',
+        timestamp: 4,
+      },
+    ]
+
+    expect(mergeLiveTimelineWithHistoryTail(hist, staleTail)).toEqual(hist)
+  })
 })

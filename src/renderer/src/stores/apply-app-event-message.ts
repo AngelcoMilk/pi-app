@@ -21,10 +21,16 @@ export function handleMessage(event: MessageEvent, api: StoreApi): void {
           state.updateTimelineItem(lastUser!.id, {
             text: event.text,
             segments: undefined,
+            runId: event.runId,
+            turnId: event.turnId,
             ...(event.sessionEntryId ? { sessionEntryId: event.sessionEntryId } : {}),
           })
-        } else if (event.sessionEntryId) {
-          state.updateTimelineItem(lastUser!.id, { sessionEntryId: event.sessionEntryId })
+        } else {
+          state.updateTimelineItem(lastUser!.id, {
+            runId: event.runId,
+            turnId: event.turnId,
+            ...(event.sessionEntryId ? { sessionEntryId: event.sessionEntryId } : {}),
+          })
         }
         api.set({ optimisticPendingUserText: null })
         return
@@ -35,6 +41,8 @@ export function handleMessage(event: MessageEvent, api: StoreApi): void {
       id: api.nextItemId(),
       type: 'user-message',
       text: event.text,
+      runId: event.runId,
+      turnId: event.turnId,
       timestamp: event.timestamp,
       sessionEntryId: event.sessionEntryId,
     })
@@ -44,7 +52,11 @@ export function handleMessage(event: MessageEvent, api: StoreApi): void {
     const items = api.get().timelineItems
     for (let i = items.length - 1; i >= 0; i--) {
       if (items[i].type === 'user-message' && !items[i].sessionEntryId) {
-        state.updateTimelineItem(items[i].id, { sessionEntryId: event.sessionEntryId })
+        state.updateTimelineItem(items[i].id, {
+          sessionEntryId: event.sessionEntryId,
+          runId: event.runId,
+          turnId: event.turnId,
+        })
         api.set({ optimisticPendingUserText: null })
         break
       }
@@ -63,7 +75,10 @@ export function handleMessage(event: MessageEvent, api: StoreApi): void {
     const items = api.get().timelineItems
     const sid = api.get().streamingAssistantId
     const last = items[items.length - 1]
-    if (last?.type === 'assistant-message' && sid === last.id) return
+    if (last?.type === 'assistant-message' && sid === last.id) {
+      state.updateTimelineItem(last.id, { runId: event.runId, turnId: event.turnId })
+      return
+    }
     const emptyOpt = [...items]
       .reverse()
       .find(
@@ -74,6 +89,7 @@ export function handleMessage(event: MessageEvent, api: StoreApi): void {
           !i.thinkingText?.trim(),
       )
     if (emptyOpt) {
+      state.updateTimelineItem(emptyOpt.id, { runId: event.runId, turnId: event.turnId })
       api.set({ streamingAssistantId: emptyOpt.id })
       return
     }
@@ -84,6 +100,7 @@ export function handleMessage(event: MessageEvent, api: StoreApi): void {
       text: '',
       thinkingText: '',
       runId: event.runId,
+      turnId: event.turnId,
       timestamp: event.timestamp,
     })
     api.set({ streamingAssistantId: id })
@@ -97,6 +114,7 @@ export function handleMessage(event: MessageEvent, api: StoreApi): void {
         text: '',
         thinkingText: '',
         runId: event.runId,
+        turnId: event.turnId,
         timestamp: event.timestamp,
       })
       api.set({ streamingAssistantId: id })
@@ -116,8 +134,12 @@ export function handleMessage(event: MessageEvent, api: StoreApi): void {
     } else if (!api.get().agentTurnBootstrapping && !api.get().optimisticPendingUserText) {
       api.set({ streamingAssistantId: null })
     }
-    if (sid && event.sessionEntryId) {
-      state.updateTimelineItem(sid, { sessionEntryId: event.sessionEntryId })
+    if (sid) {
+      state.updateTimelineItem(sid, {
+        runId: event.runId,
+        turnId: event.turnId,
+        ...(event.sessionEntryId ? { sessionEntryId: event.sessionEntryId } : {}),
+      })
     }
     if (!api.get().agentTurnBootstrapping) state.pruneEmptyAssistantBubbles()
   }

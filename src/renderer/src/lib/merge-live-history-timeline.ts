@@ -4,7 +4,9 @@ import {
   sanitizeHistoryTimeline,
 } from '@renderer/lib/timeline-dedupe'
 import {
+  assistantItemsShareTurn,
   lastAssistantItem,
+  persistedTimelineEntryIds,
   pickRicherAssistantMessage,
 } from '@renderer/lib/streaming-timeline-preserve'
 import type { TimelineItem } from '@renderer/stores/ui-store-types'
@@ -28,11 +30,65 @@ function countByType(items: TimelineItem[], type: TimelineItem['type']): number 
   return items.reduce((n, item) => (item.type === type ? n + 1 : n), 0)
 }
 
+function persistedIdentityPrefixesConflict(histIds: string[], liveIds: string[]): boolean {
+  const compared = Math.min(histIds.length, liveIds.length)
+  for (let index = 0; index < compared; index++) {
+    if (histIds[index] !== liveIds[index]) return true
+  }
+  return false
+}
+
+function persistedIdentitySequencesConflict(histIds: string[], liveIds: string[]): boolean {
+  return persistedIdentityPrefixesConflict(histIds, liveIds) || histIds.length > liveIds.length
+}
+
+function hasPersistedIdentityConflict(
+  historyItems: TimelineItem[],
+  liveItems: TimelineItem[],
+): boolean {
+  return persistedIdentitySequencesConflict(
+    persistedTimelineEntryIds(historyItems),
+    persistedTimelineEntryIds(liveItems),
+  )
+}
+
 function liveAfterUserIsStreamingTail(liveAfterUser: TimelineItem[]): boolean {
   if (liveAfterUser.length === 0) return true
   if (liveAfterUser.length === 1 && liveAfterUser[0].type === 'assistant-message') return true
   // tools + optional trailing assistant for the active turn
   return liveAfterUser.every((item) => item.type === 'tool-call' || item.type === 'assistant-message')
+}
+
+function historyTurnMatchesUnanchoredLiveTail(
+  history: TimelineItem[],
+  historyUserIndex: number,
+  liveTail: TimelineItem[],
+): boolean {
+  const historyAfterUser = history.slice(historyUserIndex + 1)
+  const historyTurnId =
+    historyAfterUser.find((item) => item.turnId)?.turnId ?? history[historyUserIndex]?.turnId
+  if (liveTail.some((item) => item.type === 'tool-call')) {
+    return (
+      !!historyTurnId &&
+      liveTail.length > 0 &&
+      liveTail.every((item) => item.turnId === historyTurnId)
+    )
+  }
+
+  const historyAssistantIndex = historyAfterUser.findIndex(
+    (item) => item.type === 'assistant-message',
+  )
+  const liveAssistantIndex = liveTail.findIndex((item) => item.type === 'assistant-message')
+  return (
+    historyAssistantIndex >= 0 &&
+    liveAssistantIndex >= 0 &&
+    assistantItemsShareTurn(
+      history,
+      historyUserIndex + 1 + historyAssistantIndex,
+      liveTail,
+      liveAssistantIndex,
+    )
+  )
 }
 
 /**
@@ -43,6 +99,7 @@ function liveAfterUserIsStreamingTail(liveAfterUser: TimelineItem[]): boolean {
 export function mergeLiveTimelineWithHistoryTail(
   historyItems: TimelineItem[],
   liveItems: TimelineItem[],
+  persistedEntryOverlap: string[] = [],
 ): TimelineItem[] {
   const hist = sanitizeHistoryTimeline(historyItems)
   const live = sanitizeHistoryTimeline(liveItems)
@@ -52,15 +109,56 @@ export function mergeLiveTimelineWithHistoryTail(
   const histUserIdx = lastUserIndex(hist)
   const liveUserIdx = lastUserIndex(live)
 
-  // live 是切出时整页 capture（含历史），优先用更完整的一侧，避免 hist+live 双份
+  // 后台可能完成当前回答并消费 queued follow-up。此时 live 的最后用户
+  // 已经领先于磁盘/切出快照，必须从持久化用户锚点接上完整 live 后缀。
   if (liveUserIdx >= 0 && histUserIdx >= 0) {
     const histUser = hist[histUserIdx]
+    if (histUser.sessionEntryId) {
+      const liveAnchorIdx = live.findIndex(
+        (item) =>
+          item.type === 'user-message' && item.sessionEntryId === histUser.sessionEntryId,
+      )
+      if (liveAnchorIdx >= 0 && liveAnchorIdx < liveUserIdx) {
+        const histAfterAnchor = hist.slice(histUserIdx + 1)
+        const liveAfterAnchor = live.slice(liveAnchorIdx + 1)
+        if (!hasPersistedIdentityConflict(histAfterAnchor, liveAfterAnchor)) {
+          return dedupeAdjacentUserMessages([
+            ...hist.slice(0, histUserIdx + 1),
+            ...liveAfterAnchor,
+          ])
+        }
+        return dedupeAdjacentUserMessages(hist)
+      }
+
+      const overlapAnchorIdx = persistedEntryOverlap.lastIndexOf(histUser.sessionEntryId)
+      if (overlapAnchorIdx >= 0) {
+        const histAfterAnchorIds = persistedTimelineEntryIds(hist.slice(histUserIdx + 1))
+        const liveAfterAnchorIds = [
+          ...persistedEntryOverlap.slice(overlapAnchorIdx + 1),
+          ...persistedTimelineEntryIds(live),
+        ]
+        if (!persistedIdentitySequencesConflict(histAfterAnchorIds, liveAfterAnchorIds)) {
+          return dedupeAdjacentUserMessages([...hist, ...live])
+        }
+        return dedupeAdjacentUserMessages(hist)
+      }
+    }
+
+    // live 是切出时整页 capture（含历史），优先用更完整的一侧，避免 hist+live 双份
     const liveUser = live[liveUserIdx]
     if (usersMatch(histUser, liveUser)) {
       const histThroughUser = hist.slice(0, histUserIdx + 1)
       const liveThroughUser = live.slice(0, liveUserIdx + 1)
       const liveAfterUser = live.slice(liveUserIdx + 1)
       const histAfterUser = hist.slice(histUserIdx + 1)
+      if (
+        persistedIdentityPrefixesConflict(
+          persistedTimelineEntryIds(histAfterUser),
+          persistedTimelineEntryIds(liveAfterUser),
+        )
+      ) {
+        return dedupeAdjacentUserMessages(hist)
+      }
 
       // live 前缀更完整（capture 了更长历史）→ 用 live 前缀 + live 尾
       if (liveThroughUser.length >= histThroughUser.length && live.length >= hist.length) {
@@ -108,18 +206,23 @@ export function mergeLiveTimelineWithHistoryTail(
     const histAfterUser = hist.slice(histUserIdx + 1)
     const liveAsst = lastAssistantItem(live)
     const histTrailing = histAfterUser[0]
+    const sameTurn = historyTurnMatchesUnanchoredLiveTail(hist, histUserIdx, live)
     if (
+      sameTurn &&
       histAfterUser.length <= 1 &&
       histTrailing?.type === 'assistant-message' &&
       liveAsst?.type === 'assistant-message' &&
-      !live.some((item) => item.type === 'tool-call')
+      live.length === 1
     ) {
       return dedupeAdjacentUserMessages([
         ...histThroughUser,
         pickRicherAssistantMessage(histTrailing, liveAsst),
       ])
     }
-    if (live.some((item) => item.type === 'tool-call') || live.length > histAfterUser.length) {
+    if (
+      sameTurn &&
+      (live.some((item) => item.type === 'tool-call') || live.length > histAfterUser.length)
+    ) {
       return dedupeAdjacentUserMessages([...histThroughUser, ...live])
     }
     return dedupeAdjacentUserMessages(hist)

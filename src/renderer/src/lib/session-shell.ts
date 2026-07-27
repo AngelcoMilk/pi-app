@@ -16,7 +16,10 @@ import { sanitizeHistoryTimeline } from '@renderer/lib/timeline-dedupe'
 import { projectTimelineItems } from '@shared/timeline-projection'
 import { getLiveSessionTimeline } from '@renderer/lib/live-session-timeline-cache'
 import { mergeLiveTimelineWithHistoryTail } from '@renderer/lib/merge-live-history-timeline'
-import { applyLiveStreamingTextToMergedTimeline } from '@renderer/lib/streaming-timeline-preserve'
+import {
+  applyLiveStreamingTextToMergedTimeline,
+  resolveMergedStreamingAssistantId,
+} from '@renderer/lib/streaming-timeline-preserve'
 import { applyComposerDisplayMeta } from '@renderer/lib/session-display-meta'
 import { useUIStore } from '@renderer/stores/ui-store'
 import type { RunState, TimelineItem } from '@renderer/stores/ui-store-types'
@@ -235,7 +238,15 @@ export function bindViewToUiStore(view: SessionView): void {
     state.setSessionRuntimeRunning(view.sessionKey, true)
   }
 
-  const streamingAssistantId = view.streamingAssistantId
+  const streamCandidateItems =
+    live && view.streamingAssistantId === live.streamingAssistantId
+      ? live.timelineItems
+      : view.items
+  const streamingAssistantId = resolveMergedStreamingAssistantId(
+    view.items,
+    streamCandidateItems,
+    view.streamingAssistantId,
+  )
   const optimisticPendingUserText = view.optimisticPendingUserText
   const agentTurnBootstrapping = view.agentTurnBootstrapping
 
@@ -280,7 +291,11 @@ function mergeLiveIntoItems(sessionKey: string, diskItems: TimelineItem[]): Time
   if (!live || live.timelineItems.length === 0) {
     return projectTimelineItems(diskItems) as TimelineItem[]
   }
-  let merged = mergeLiveTimelineWithHistoryTail(diskItems, live.timelineItems)
+  let merged = mergeLiveTimelineWithHistoryTail(
+    diskItems,
+    live.timelineItems,
+    live.persistedEntryOverlap,
+  )
   merged = applyLiveStreamingTextToMergedTimeline(
     merged,
     live.timelineItems,
@@ -342,14 +357,17 @@ export function focusSessionSync(sessionId: string, sessionFile: string): {
       live?.agentTurnBootstrapping === true
     const remixedItems =
       view.items.length > 0 ? mergeLiveIntoItems(sessionKey, view.items) : view.items
+    const remixedStreamingAssistantId = resolveMergedStreamingAssistantId(
+      remixedItems,
+      live?.timelineItems ?? view.items,
+      live ? live.streamingAssistantId : view.streamingAssistantId,
+    )
     if (runtimeRunning || liveRunning || view.runUI === 'running') {
       view = {
         ...view,
         items: remixedItems,
         runUI: 'running',
-        streamingAssistantId: live
-          ? live.streamingAssistantId
-          : view.streamingAssistantId,
+        streamingAssistantId: remixedStreamingAssistantId,
         optimisticPendingUserText: live
           ? live.optimisticPendingUserText
           : view.optimisticPendingUserText,
@@ -360,13 +378,18 @@ export function focusSessionSync(sessionId: string, sessionFile: string): {
     } else {
       const resolved = resolveRunUI(sessionKey, {
         runtime,
-        streamingAssistantId: view.streamingAssistantId,
+        streamingAssistantId: remixedStreamingAssistantId,
         optimisticPendingUserText: view.optimisticPendingUserText,
         agentTurnBootstrapping: view.agentTurnBootstrapping,
         workerSessionFile: sessionKey,
         workerStatus: 'idle',
       })
-      view = { ...view, items: remixedItems, runUI: resolved }
+      view = {
+        ...view,
+        items: remixedItems,
+        runUI: resolved,
+        streamingAssistantId: remixedStreamingAssistantId,
+      }
     }
     views.set(sessionKey, view)
   }
@@ -441,9 +464,14 @@ export async function hydrateSessionView(
             : priorItems
         const live = getLiveSessionTimeline(sessionKey)
         const runtime = useUIStore.getState().sessionRuntimeRunning ?? {}
+        const streamingAssistantId = resolveMergedStreamingAssistantId(
+          prefer,
+          live?.timelineItems ?? existing?.items ?? prefer,
+          live ? live.streamingAssistantId : (existing?.streamingAssistantId ?? null),
+        )
         const runUI = resolveRunUI(sessionKey, {
           runtime,
-          streamingAssistantId: live?.streamingAssistantId ?? null,
+          streamingAssistantId,
           optimisticPendingUserText: live?.optimisticPendingUserText ?? null,
           agentTurnBootstrapping: live?.agentTurnBootstrapping ?? false,
           workerSessionFile: sessionKey,
@@ -460,9 +488,7 @@ export async function hydrateSessionView(
           historyTotal: Math.max(hist.totalCount, existing?.historyTotal ?? 0),
           historyLoaded: Math.max(hist.sourceCount, existing?.historyLoaded ?? 0),
           runUI,
-          streamingAssistantId: live
-            ? live.streamingAssistantId
-            : (existing?.streamingAssistantId ?? null),
+          streamingAssistantId,
           optimisticPendingUserText: live
             ? live.optimisticPendingUserText
             : (existing?.optimisticPendingUserText ?? null),
@@ -546,11 +572,21 @@ export async function hydrateSessionView(
       live?.optimisticPendingUserText != null ||
       live?.agentTurnBootstrapping === true
 
-    const streamingAssistantId = focusedState
+    const streamCandidateItems = focusedState
+      ? focusedState.timelineItems
+      : live
+        ? live.timelineItems
+        : (existing?.items ?? merged)
+    const streamCandidateId = focusedState
       ? focusedState.streamingAssistantId
       : live
         ? live.streamingAssistantId
         : (existing?.streamingAssistantId ?? null)
+    const streamingAssistantId = resolveMergedStreamingAssistantId(
+      merged,
+      streamCandidateItems,
+      streamCandidateId,
+    )
     const optimisticPendingUserText = focusedState
       ? focusedState.optimisticPendingUserText
       : live

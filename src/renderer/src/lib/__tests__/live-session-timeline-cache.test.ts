@@ -374,4 +374,586 @@ describe('live-session-timeline-cache', () => {
       BACKGROUND_LIVE_TIMELINE_MAX_ITEMS,
     )
   })
+
+  it('should_keep_fixed_persisted_overlap_when_background_items_are_trimmed', () => {
+    const sessionFile = '/tmp/large-live-overlap.jsonl'
+    const items: TimelineItem[] = Array.from(
+      { length: BACKGROUND_LIVE_TIMELINE_MAX_ITEMS + 4 },
+      (_, index) => ({
+        id: `entry-${index}`,
+        type: index % 2 === 0 ? 'user-message' : 'assistant-message',
+        text: `message ${index}`,
+        sessionEntryId: `persisted-${index}`,
+        timestamp: index,
+      }),
+    ) as TimelineItem[]
+
+    saveLiveSessionTimeline({
+      sessionId: 'session-1',
+      sessionFile,
+      timelineItems: items,
+      streamingAssistantId: null,
+      runState: { status: 'running', toolCount: 0, errorCount: 0 },
+      pendingSteering: [],
+      pendingFollowUp: [],
+      optimisticPendingUserText: null,
+      agentTurnBootstrapping: false,
+    })
+
+    const snapshot = getLiveSessionTimeline(sessionFile)
+    expect(snapshot?.timelineItems).toHaveLength(BACKGROUND_LIVE_TIMELINE_MAX_ITEMS)
+    expect(snapshot?.persistedEntryOverlap).toEqual([
+      'persisted-0',
+      'persisted-1',
+      'persisted-2',
+      'persisted-3',
+    ])
+  })
+
+  it('should_keep_ordered_branch_local_overlap_across_repeated_saves', () => {
+    const sessionFile = '/tmp/repeated-live-overlap.jsonl'
+    const firstItems = Array.from(
+      { length: BACKGROUND_LIVE_TIMELINE_MAX_ITEMS + 2 },
+      (_, index) => ({
+        id: `first-${index}`,
+        type: 'assistant-message' as const,
+        text: `first ${index}`,
+        sessionEntryId: `first-entry-${index}`,
+        timestamp: index,
+      }),
+    )
+    const first = {
+      sessionId: 'session-1',
+      sessionFile,
+      timelineItems: firstItems,
+      streamingAssistantId: null,
+      runState: { status: 'running' as const, toolCount: 0, errorCount: 0 },
+      pendingSteering: [],
+      pendingFollowUp: [],
+      optimisticPendingUserText: null,
+      agentTurnBootstrapping: false,
+    }
+    saveLiveSessionTimeline(first)
+    saveLiveSessionTimeline({ ...first, persistedEntryOverlap: ['caller-stale'] })
+
+    expect(getLiveSessionTimeline(sessionFile)?.persistedEntryOverlap).toEqual([
+      'first-entry-0',
+      'first-entry-1',
+    ])
+
+    saveLiveSessionTimeline({
+      ...first,
+      timelineItems: [
+        {
+          id: 'branch-user',
+          type: 'user-message',
+          text: 'new branch',
+          sessionEntryId: 'branch-user-entry',
+          timestamp: 500,
+        },
+        {
+          id: 'branch-assistant',
+          type: 'assistant-message',
+          text: 'new answer',
+          sessionEntryId: 'branch-assistant-entry',
+          timestamp: 501,
+        },
+      ],
+      persistedEntryOverlap: ['branch-parent-entry'],
+    })
+
+    const branch = getLiveSessionTimeline(sessionFile)
+    expect(branch?.timelineItems).toHaveLength(2)
+    expect(branch?.persistedEntryOverlap).toEqual(['branch-parent-entry'])
+  })
+
+  it('should_replace_longer_cache_when_explicit_overlap_marks_strict_prefix_branch_change', () => {
+    const sessionFile = '/tmp/strict-prefix-branch.jsonl'
+    saveLiveSessionTimeline({
+      sessionId: 'session-1',
+      sessionFile,
+      timelineItems: [
+        { id: 'old-u1', type: 'user-message', text: 'q1', sessionEntryId: 'u1', timestamp: 1 },
+        { id: 'old-a1', type: 'assistant-message', text: 'a1', sessionEntryId: 'a1', timestamp: 2 },
+        { id: 'old-u2', type: 'user-message', text: 'q2', sessionEntryId: 'u2', timestamp: 3 },
+        { id: 'old-a2', type: 'assistant-message', text: 'old branch', sessionEntryId: 'a2', timestamp: 4 },
+      ],
+      persistedEntryOverlap: ['parent-old'],
+      streamingAssistantId: null,
+      runState: { status: 'idle', toolCount: 0, errorCount: 0 },
+      pendingSteering: [],
+      pendingFollowUp: [],
+      optimisticPendingUserText: null,
+      agentTurnBootstrapping: false,
+    })
+
+    saveLiveSessionTimeline({
+      sessionId: 'session-1',
+      sessionFile,
+      timelineItems: [
+        { id: 'new-u1', type: 'user-message', text: 'q1', sessionEntryId: 'u1', timestamp: 1 },
+        { id: 'new-a1', type: 'assistant-message', text: 'a1', sessionEntryId: 'a1', timestamp: 2 },
+      ],
+      persistedEntryOverlap: ['parent-new'],
+      streamingAssistantId: null,
+      runState: { status: 'idle', toolCount: 0, errorCount: 0 },
+      pendingSteering: [],
+      pendingFollowUp: [],
+      optimisticPendingUserText: null,
+      agentTurnBootstrapping: false,
+    })
+
+    const snapshot = getLiveSessionTimeline(sessionFile)
+    expect(snapshot?.timelineItems.map((item) => item.id)).toEqual(['new-u1', 'new-a1'])
+    expect(snapshot?.persistedEntryOverlap).toEqual(['parent-new'])
+  })
+
+  it('should_replace_cache_when_persisted_identities_are_disjoint', () => {
+    const sessionFile = '/tmp/disjoint-branch.jsonl'
+    saveLiveSessionTimeline({
+      sessionId: 'session-1',
+      sessionFile,
+      timelineItems: [
+        { id: 'old-u1', type: 'user-message', text: 'old q1', sessionEntryId: 'old-u1', timestamp: 1 },
+        { id: 'old-a1', type: 'assistant-message', text: 'old a1', sessionEntryId: 'old-a1', timestamp: 2 },
+        { id: 'old-u2', type: 'user-message', text: 'old q2', sessionEntryId: 'old-u2', timestamp: 3 },
+        { id: 'old-a2', type: 'assistant-message', text: 'old a2', sessionEntryId: 'old-a2', timestamp: 4 },
+      ],
+      streamingAssistantId: null,
+      runState: { status: 'idle', toolCount: 0, errorCount: 0 },
+      pendingSteering: [],
+      pendingFollowUp: [],
+      optimisticPendingUserText: null,
+      agentTurnBootstrapping: false,
+    })
+
+    saveLiveSessionTimeline({
+      sessionId: 'session-1',
+      sessionFile,
+      timelineItems: [
+        { id: 'new-u', type: 'user-message', text: 'new q', sessionEntryId: 'new-u', timestamp: 5 },
+        { id: 'new-a', type: 'assistant-message', text: 'new answer', sessionEntryId: 'new-a', timestamp: 6 },
+      ],
+      streamingAssistantId: null,
+      runState: { status: 'idle', toolCount: 0, errorCount: 0 },
+      pendingSteering: [],
+      pendingFollowUp: [],
+      optimisticPendingUserText: null,
+      agentTurnBootstrapping: false,
+    })
+
+    expect(getLiveSessionTimeline(sessionFile)?.timelineItems.map((item) => item.id)).toEqual([
+      'new-u',
+      'new-a',
+    ])
+  })
+
+  it('should_keep_new_turn_streaming_row_when_existing_cache_is_a_strict_prefix', () => {
+    const sessionFile = '/tmp/new-turn-stream-row.jsonl'
+    saveLiveSessionTimeline({
+      sessionId: 'session-1',
+      sessionFile,
+      timelineItems: [
+        { id: 'old-u1', type: 'user-message', text: 'q1', sessionEntryId: 'u1', timestamp: 1 },
+        {
+          id: 'old-a1',
+          type: 'assistant-message',
+          text: 'completed first answer with a much longer body',
+          sessionEntryId: 'a1-entry',
+          timestamp: 2,
+        },
+      ],
+      streamingAssistantId: null,
+      runState: { status: 'running', toolCount: 0, errorCount: 0 },
+      pendingSteering: [],
+      pendingFollowUp: [],
+      optimisticPendingUserText: null,
+      agentTurnBootstrapping: false,
+    })
+
+    saveLiveSessionTimeline({
+      sessionId: 'session-1',
+      sessionFile,
+      timelineItems: [
+        { id: 'new-u1', type: 'user-message', text: 'q1', sessionEntryId: 'u1', timestamp: 1 },
+        {
+          id: 'new-a1',
+          type: 'assistant-message',
+          text: 'completed first answer',
+          sessionEntryId: 'a1-entry',
+          timestamp: 2,
+        },
+        { id: 'new-u2', type: 'user-message', text: 'q2', sessionEntryId: 'u2', timestamp: 3 },
+        { id: 'stream-a2', type: 'assistant-message', text: 'new', timestamp: 4 },
+      ],
+      streamingAssistantId: 'stream-a2',
+      runState: { status: 'running', toolCount: 0, errorCount: 0 },
+      pendingSteering: [],
+      pendingFollowUp: [],
+      optimisticPendingUserText: null,
+      agentTurnBootstrapping: false,
+    })
+
+    let snapshot = getLiveSessionTimeline(sessionFile)
+    expect(snapshot?.timelineItems.at(-1)).toMatchObject({
+      id: 'stream-a2',
+      text: 'new',
+    })
+    expect(snapshot?.timelineItems.at(-1)?.sessionEntryId).toBeUndefined()
+    expect(snapshot?.streamingAssistantId).toBe('stream-a2')
+
+    applyBackgroundAppEventToLiveTimeline(sessionFile, {
+      type: 'message',
+      role: 'assistant',
+      phase: 'delta',
+      contentKind: 'text',
+      text: ' answer',
+      seq: 1,
+      workspaceId: '/workspace',
+      sessionFile,
+      timestamp: 5,
+    })
+
+    snapshot = getLiveSessionTimeline(sessionFile)
+    expect(snapshot?.timelineItems.at(-1)).toMatchObject({
+      id: 'stream-a2',
+      text: 'new answer',
+    })
+    expect(snapshot?.timelineItems.at(-1)?.sessionEntryId).toBeUndefined()
+    expect(snapshot?.streamingAssistantId).toBe('stream-a2')
+    expect(snapshot?.timelineItems.find((item) => item.id === snapshot.streamingAssistantId)?.type).toBe(
+      'assistant-message',
+    )
+  })
+
+  it('should_remap_shorter_active_capture_pointer_and_append_later_delta', () => {
+    const sessionFile = '/tmp/ordinary-shorter-capture.jsonl'
+    saveLiveSessionTimeline({
+      sessionId: 'session-1',
+      sessionFile,
+      timelineItems: [
+        { id: 'u1', type: 'user-message', text: 'q', turnId: 'turn-1', timestamp: 1 },
+        {
+          id: 'a1',
+          type: 'assistant-message',
+          text: 'complete streamed answer',
+          runId: 'run-1',
+          turnId: 'turn-1',
+          timestamp: 2,
+        },
+      ],
+      streamingAssistantId: 'a1',
+      runState: { status: 'running', toolCount: 0, errorCount: 0 },
+      pendingSteering: [],
+      pendingFollowUp: [],
+      optimisticPendingUserText: null,
+      agentTurnBootstrapping: false,
+    })
+
+    saveLiveSessionTimeline({
+      sessionId: 'session-1',
+      sessionFile,
+      timelineItems: [
+        {
+          id: 'a-short',
+          type: 'assistant-message',
+          text: 'answer',
+          runId: 'run-1',
+          turnId: 'turn-1',
+          timestamp: 2,
+        },
+      ],
+      streamingAssistantId: 'a-short',
+      runState: { status: 'running', toolCount: 0, errorCount: 0 },
+      pendingSteering: [],
+      pendingFollowUp: [],
+      optimisticPendingUserText: null,
+      agentTurnBootstrapping: false,
+    })
+
+    let snapshot = getLiveSessionTimeline(sessionFile)
+    expect(snapshot?.timelineItems.map((item) => item.id)).toEqual(['u1', 'a1'])
+    expect(snapshot?.streamingAssistantId).toBe('a1')
+    const streamingAssistantId = snapshot?.streamingAssistantId
+    expect(
+      snapshot?.timelineItems.find((item) => item.id === streamingAssistantId),
+    ).toMatchObject({
+      type: 'assistant-message',
+      runId: 'run-1',
+    })
+
+    applyBackgroundAppEventToLiveTimeline(sessionFile, {
+      type: 'message',
+      role: 'assistant',
+      phase: 'delta',
+      contentKind: 'text',
+      text: ' plus',
+      runId: 'run-1',
+      turnId: 'turn-1',
+      seq: 2,
+      workspaceId: '/workspace',
+      sessionFile,
+      timestamp: 3,
+    })
+
+    snapshot = getLiveSessionTimeline(sessionFile)
+    expect(snapshot?.timelineItems.find((item) => item.id === 'a1')?.text).toBe(
+      'complete streamed answer plus',
+    )
+  })
+
+  it('should_not_overwrite_new_turn_from_stale_idle_assistant_only_cache', () => {
+    const sessionFile = '/tmp/stale-idle-assistant-only.jsonl'
+    saveLiveSessionTimeline({
+      sessionId: 'session-1',
+      sessionFile,
+      timelineItems: [
+        {
+          id: 'stale-a1',
+          type: 'assistant-message',
+          text: 'stale first answer with a much longer body',
+          runId: 'run-1',
+          timestamp: 1,
+        },
+      ],
+      streamingAssistantId: null,
+      runState: { status: 'idle', toolCount: 0, errorCount: 0 },
+      pendingSteering: [],
+      pendingFollowUp: [],
+      optimisticPendingUserText: null,
+      agentTurnBootstrapping: false,
+    })
+
+    saveLiveSessionTimeline({
+      sessionId: 'session-1',
+      sessionFile,
+      timelineItems: [
+        { id: 'u1', type: 'user-message', text: 'q1', sessionEntryId: 'u1', timestamp: 1 },
+        { id: 'a1', type: 'assistant-message', text: 'first answer', runId: 'run-1', timestamp: 2 },
+        { id: 'u2', type: 'user-message', text: 'q2', sessionEntryId: 'u2', timestamp: 3 },
+        { id: 'a2', type: 'assistant-message', text: 'new turn partial', runId: 'run-2', timestamp: 4 },
+      ],
+      streamingAssistantId: 'a2',
+      runState: { status: 'running', toolCount: 0, errorCount: 0 },
+      pendingSteering: [],
+      pendingFollowUp: [],
+      optimisticPendingUserText: null,
+      agentTurnBootstrapping: false,
+    })
+
+    const snapshot = getLiveSessionTimeline(sessionFile)
+    expect(snapshot?.timelineItems.at(-1)).toMatchObject({
+      id: 'a2',
+      text: 'new turn partial',
+      runId: 'run-2',
+    })
+    expect(snapshot?.streamingAssistantId).toBe('a2')
+    const streamingAssistantId = snapshot?.streamingAssistantId
+    expect(snapshot?.timelineItems.find((item) => item.id === streamingAssistantId)?.type).toBe(
+      'assistant-message',
+    )
+  })
+
+  it('should_enrich_matching_active_assistant_only_tail_and_keep_pointer_valid', () => {
+    const sessionFile = '/tmp/active-assistant-only-tail.jsonl'
+    saveLiveSessionTimeline({
+      sessionId: 'session-1',
+      sessionFile,
+      timelineItems: [
+        { id: 'u1', type: 'user-message', text: 'q', turnId: 'turn-1', timestamp: 1 },
+        {
+          id: 'a1',
+          type: 'assistant-message',
+          text: 'partial',
+          runId: 'run-1',
+          turnId: 'turn-1',
+          timestamp: 2,
+        },
+      ],
+      streamingAssistantId: 'a1',
+      runState: { status: 'running', toolCount: 0, errorCount: 0 },
+      pendingSteering: [],
+      pendingFollowUp: [],
+      optimisticPendingUserText: null,
+      agentTurnBootstrapping: false,
+    })
+
+    saveLiveSessionTimeline({
+      sessionId: 'session-1',
+      sessionFile,
+      timelineItems: [
+        {
+          id: 'tail-a1',
+          type: 'assistant-message',
+          text: 'partial and still streaming',
+          runId: 'run-1',
+          turnId: 'turn-1',
+          timestamp: 3,
+        },
+      ],
+      streamingAssistantId: 'tail-a1',
+      runState: { status: 'running', toolCount: 0, errorCount: 0 },
+      pendingSteering: [],
+      pendingFollowUp: [],
+      optimisticPendingUserText: null,
+      agentTurnBootstrapping: false,
+    })
+
+    const snapshot = getLiveSessionTimeline(sessionFile)
+    expect(snapshot?.timelineItems.at(-1)).toMatchObject({
+      id: 'a1',
+      text: 'partial and still streaming',
+      runId: 'run-1',
+    })
+    expect(snapshot?.streamingAssistantId).toBe('a1')
+    expect(snapshot?.timelineItems.find((item) => item.id === snapshot.streamingAssistantId)?.type).toBe(
+      'assistant-message',
+    )
+  })
+
+  it('should_bind_turn_id_to_background_optimistic_message_and_tool_rows', () => {
+    const sessionFile = '/tmp/background-turn-id.jsonl'
+    saveLiveSessionTimeline({
+      sessionId: 'session-1',
+      sessionFile,
+      timelineItems: [
+        { id: 'opt-user-turn', type: 'user-message', text: 'question', timestamp: 1 },
+        {
+          id: 'opt-asst-turn',
+          type: 'assistant-message',
+          text: '',
+          thinkingText: '',
+          timestamp: 2,
+        },
+      ],
+      streamingAssistantId: 'opt-asst-turn',
+      runState: { status: 'running', toolCount: 0, errorCount: 0 },
+      pendingSteering: [],
+      pendingFollowUp: [],
+      optimisticPendingUserText: 'question',
+      agentTurnBootstrapping: true,
+    })
+
+    applyBackgroundAppEventToLiveTimeline(sessionFile, {
+      type: 'message',
+      role: 'user',
+      phase: 'start',
+      text: 'question',
+      turnId: 'turn-1',
+      runId: 'run-1',
+      seq: 1,
+      workspaceId: '/workspace',
+      sessionFile,
+      timestamp: 3,
+    })
+    applyBackgroundAppEventToLiveTimeline(sessionFile, {
+      type: 'message',
+      role: 'user',
+      phase: 'end',
+      sessionEntryId: 'user-entry-turn',
+      turnId: 'turn-1',
+      runId: 'run-1',
+      seq: 2,
+      workspaceId: '/workspace',
+      sessionFile,
+      timestamp: 4,
+    })
+    applyBackgroundAppEventToLiveTimeline(sessionFile, {
+      type: 'message',
+      role: 'assistant',
+      phase: 'start',
+      turnId: 'turn-1',
+      runId: 'run-1',
+      seq: 3,
+      workspaceId: '/workspace',
+      sessionFile,
+      timestamp: 5,
+    })
+    applyBackgroundAppEventToLiveTimeline(sessionFile, {
+      type: 'message',
+      role: 'assistant',
+      phase: 'end',
+      text: 'answer',
+      sessionEntryId: 'assistant-entry-turn',
+      turnId: 'turn-1',
+      runId: 'run-1',
+      seq: 4,
+      workspaceId: '/workspace',
+      sessionFile,
+      timestamp: 6,
+    })
+    applyBackgroundAppEventToLiveTimeline(sessionFile, {
+      type: 'tool',
+      phase: 'start',
+      toolCallId: 'tool-turn',
+      toolName: 'read',
+      input: {},
+      turnId: 'turn-1',
+      runId: 'run-1',
+      seq: 5,
+      workspaceId: '/workspace',
+      sessionFile,
+      timestamp: 7,
+    })
+    applyBackgroundAppEventToLiveTimeline(sessionFile, {
+      type: 'tool',
+      phase: 'end',
+      toolCallId: 'tool-turn',
+      toolName: 'read',
+      output: 'ok',
+      turnId: 'turn-1',
+      runId: 'run-1',
+      seq: 6,
+      workspaceId: '/workspace',
+      sessionFile,
+      timestamp: 8,
+    })
+
+    const rows = getLiveSessionTimeline(sessionFile)?.timelineItems ?? []
+    expect(rows.find((item) => item.id === 'opt-user-turn')).toMatchObject({
+      turnId: 'turn-1',
+      sessionEntryId: 'user-entry-turn',
+    })
+    expect(rows.find((item) => item.id === 'opt-asst-turn')).toMatchObject({
+      turnId: 'turn-1',
+      sessionEntryId: 'assistant-entry-turn',
+    })
+    expect(rows.find((item) => item.toolCallId === 'tool-turn')).toMatchObject({
+      turnId: 'turn-1',
+      toolPhase: 'end',
+    })
+  })
+
+  it('should_clear_items_overlap_and_pending_deltas_for_rewind_boundary', () => {
+    const sessionFile = '/tmp/clear-live-overlap.jsonl'
+    saveLiveSessionTimeline({
+      sessionId: 'session-1',
+      sessionFile,
+      timelineItems: [
+        { id: 'assistant', type: 'assistant-message', text: '', timestamp: 1 },
+      ],
+      persistedEntryOverlap: ['parent-entry'],
+      streamingAssistantId: 'assistant',
+      runState: { status: 'running', toolCount: 0, errorCount: 0 },
+      pendingSteering: [],
+      pendingFollowUp: [],
+      optimisticPendingUserText: null,
+      agentTurnBootstrapping: false,
+    })
+    applyBackgroundAppEventToLiveTimeline(sessionFile, {
+      type: 'message',
+      role: 'assistant',
+      phase: 'delta',
+      contentKind: 'text',
+      text: 'pending',
+      seq: 1,
+      workspaceId: '/workspace',
+      sessionFile,
+      timestamp: 2,
+    })
+
+    clearLiveSessionTimeline(sessionFile)
+
+    expect(getLiveSessionTimeline(sessionFile)).toBeNull()
+  })
 })

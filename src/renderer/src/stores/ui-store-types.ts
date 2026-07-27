@@ -26,6 +26,7 @@ export type ToolTimelineItem = {
   toolStatusLine?: string
   extensionUiSuspended?: boolean
   runId?: string
+  turnId?: string
   isError?: boolean
   timestamp?: number
 }
@@ -46,6 +47,7 @@ export interface TimelineItem {
   extensionUiSuspended?: boolean
   extensionUiRequestId?: string
   runId?: string
+  turnId?: string
   isError?: boolean
   slashCommand?: string
   slashStatus?: 'dispatched' | 'ok' | 'error' | 'info'

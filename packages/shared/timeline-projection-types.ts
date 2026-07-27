@@ -11,6 +11,7 @@ export type ProjectableTimelineItem = {
   toolDetails?: unknown
   toolArgs?: unknown
   runId?: string
+  turnId?: string
   isError?: boolean
   sessionEntryId?: string
   timestamp?: number

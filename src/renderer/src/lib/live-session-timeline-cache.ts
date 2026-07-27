@@ -1,4 +1,8 @@
-import { mergeLiveCacheTimelineSnapshots } from '@renderer/lib/streaming-timeline-preserve'
+import {
+  mergeLiveCacheTimelineSnapshots,
+  persistedTimelineBranchesConflict,
+  resolveMergedStreamingAssistantId,
+} from '@renderer/lib/streaming-timeline-preserve'
 import { normalizeSessionFileKey } from '@renderer/lib/session-file-key'
 import { normalizeTimelineMessageText } from '@renderer/lib/timeline-dedupe'
 import type { AppEvent } from '@shared/app-events'
@@ -8,6 +12,7 @@ export type LiveSessionTimelineSnapshot = {
   sessionId: string | null
   sessionFile: string
   timelineItems: TimelineItem[]
+  persistedEntryOverlap?: string[]
   streamingAssistantId: string | null
   runState: RunState
   pendingSteering: string[]
@@ -19,6 +24,7 @@ export type LiveSessionTimelineSnapshot = {
 const liveTimelines = new Map<string, LiveSessionTimelineSnapshot>()
 /** Cap live items for non-foreground sessions (M1). */
 export const BACKGROUND_LIVE_TIMELINE_MAX_ITEMS = 200
+export const BACKGROUND_LIVE_PERSISTED_OVERLAP_MAX = 16
 let seq = 0
 
 function cacheKey(sessionFile: string): string {
@@ -29,24 +35,51 @@ function cloneItems(items: TimelineItem[]): TimelineItem[] {
   return items.map((i) => ({ ...i }))
 }
 
+function appendPersistedOverlap(overlap: string[], entryId: string): void {
+  if (overlap.includes(entryId)) return
+  overlap.push(entryId)
+}
+
 export function saveLiveSessionTimeline(snapshot: LiveSessionTimelineSnapshot): void {
   const key = cacheKey(snapshot.sessionFile)
   if (!key) return
   const prev = liveTimelines.get(key)
-  const timelineItems = mergeLiveCacheTimelineSnapshots(
-    snapshot.timelineItems,
-    prev?.timelineItems ?? [],
-  )
-  // Prefer explicit snapshot id; only fall back to prev when snapshot omitted streaming (undefined).
-  // Do NOT use `??` alone on null — idle captures intentionally clear streamingAssistantId to null.
-  const nextStreamingId =
+  const timelineBranchChanged = prev
+    ? persistedTimelineBranchesConflict(snapshot.timelineItems, prev.timelineItems)
+    : false
+  const branchChanged =
+    timelineBranchChanged ||
+    (!!prev &&
+      snapshot.persistedEntryOverlap != null &&
+      snapshot.timelineItems.length < prev.timelineItems.length)
+  const timelineItems = branchChanged
+    ? cloneItems(snapshot.timelineItems)
+    : mergeLiveCacheTimelineSnapshots(snapshot.timelineItems, prev?.timelineItems ?? [], {
+        incomingStreamingAssistantId: snapshot.streamingAssistantId,
+        existingStreamingAssistantId: prev?.streamingAssistantId,
+      })
+  const requestedStreamingId =
     snapshot.streamingAssistantId !== undefined
       ? snapshot.streamingAssistantId
       : (prev?.streamingAssistantId ?? null)
+  const requestedStreamingItems =
+    snapshot.streamingAssistantId !== undefined
+      ? snapshot.timelineItems
+      : (prev?.timelineItems ?? snapshot.timelineItems)
+  const nextStreamingId = resolveMergedStreamingAssistantId(
+    timelineItems,
+    requestedStreamingItems,
+    requestedStreamingId,
+  )
   const nextSnapshot: LiveSessionTimelineSnapshot = {
     ...snapshot,
     sessionFile: key,
     timelineItems,
+    persistedEntryOverlap: [
+      ...(branchChanged
+        ? (snapshot.persistedEntryOverlap ?? [])
+        : (prev?.persistedEntryOverlap ?? snapshot.persistedEntryOverlap ?? [])),
+    ].slice(-BACKGROUND_LIVE_PERSISTED_OVERLAP_MAX),
     streamingAssistantId: nextStreamingId,
     pendingSteering: [...snapshot.pendingSteering],
     pendingFollowUp: [...snapshot.pendingFollowUp],
@@ -64,6 +97,7 @@ export function getLiveSessionTimeline(sessionFile: string): LiveSessionTimeline
   return {
     ...snap,
     timelineItems: cloneItems(snap.timelineItems),
+    persistedEntryOverlap: [...(snap.persistedEntryOverlap ?? [])],
     pendingSteering: [...snap.pendingSteering],
     pendingFollowUp: [...snap.pendingFollowUp],
   }
@@ -87,7 +121,22 @@ function nextCachedItemId(): string {
 }
 
 function ensureStreamingAssistant(snap: LiveSessionTimelineSnapshot, event: Extract<AppEvent, { type: 'message' }>): string {
-  if (snap.streamingAssistantId) return snap.streamingAssistantId
+  if (snap.streamingAssistantId) {
+    const lastIndex = snap.timelineItems.length - 1
+    const index =
+      snap.timelineItems[lastIndex]?.id === snap.streamingAssistantId
+        ? lastIndex
+        : snap.timelineItems.findIndex((row) => row.id === snap.streamingAssistantId)
+    if (index >= 0) {
+      const current = snap.timelineItems[index]
+      const runId = event.runId ?? current.runId
+      const turnId = event.turnId ?? current.turnId
+      if (current.runId !== runId || current.turnId !== turnId) {
+        snap.timelineItems[index] = { ...current, runId, turnId }
+      }
+    }
+    return snap.streamingAssistantId
+  }
   const id = nextCachedItemId()
   snap.timelineItems.push({
     id,
@@ -95,6 +144,7 @@ function ensureStreamingAssistant(snap: LiveSessionTimelineSnapshot, event: Extr
     text: '',
     thinkingText: '',
     runId: event.runId,
+    turnId: event.turnId,
     timestamp: event.timestamp,
   })
   snap.streamingAssistantId = id
@@ -225,6 +275,8 @@ function applyMessage(
           snap.timelineItems[index] = {
             ...current,
             text: event.text && event.text.trim() ? event.text : current.text,
+            runId: event.runId,
+            turnId: event.turnId,
             ...(event.sessionEntryId ? { sessionEntryId: event.sessionEntryId } : {}),
           }
         }
@@ -255,6 +307,7 @@ function applyMessage(
         ...lastUser,
         text: incomingText ? event.text : lastUser.text,
         runId: event.runId,
+        turnId: event.turnId,
         timestamp: event.timestamp,
       }
     } else {
@@ -263,6 +316,7 @@ function applyMessage(
         type: 'user-message',
         text: event.text || '',
         runId: event.runId,
+        turnId: event.turnId,
         timestamp: event.timestamp,
       })
     }
@@ -275,7 +329,12 @@ function applyMessage(
     for (let itemIndex = snap.timelineItems.length - 1; itemIndex >= 0; itemIndex--) {
       const item = snap.timelineItems[itemIndex]
       if (item.type === 'user-message' && !item.sessionEntryId) {
-        snap.timelineItems[itemIndex] = { ...item, sessionEntryId: event.sessionEntryId }
+        snap.timelineItems[itemIndex] = {
+          ...item,
+          sessionEntryId: event.sessionEntryId,
+          runId: event.runId,
+          turnId: event.turnId,
+        }
         break
       }
     }
@@ -298,6 +357,7 @@ function applyTool(
       toolPhase: 'start',
       toolArgs: event.input,
       runId: event.runId,
+      turnId: event.turnId,
       timestamp: event.timestamp,
     })
     snap.runState = { ...snap.runState, activeTool: event.toolName }
@@ -315,6 +375,8 @@ function applyTool(
       toolPhase: 'end',
       toolOutput: typeof event.output === 'string' ? event.output : event.output == null ? '' : JSON.stringify(event.output, null, 2),
       toolDetails: event.details,
+      runId: event.runId,
+      turnId: event.turnId,
       isError: event.isError,
     }
     snap.runState = {
@@ -335,6 +397,7 @@ function ensureLiveTimeline(sessionFile: string): LiveSessionTimelineSnapshot {
       sessionId: null,
       sessionFile: key,
       timelineItems: [],
+      persistedEntryOverlap: [],
       streamingAssistantId: null,
       runState: { status: 'running', toolCount: 0, errorCount: 0 },
       pendingSteering: [],
@@ -351,7 +414,16 @@ function trimBackgroundLiveItems(snap: LiveSessionTimelineSnapshot): void {
   const max = BACKGROUND_LIVE_TIMELINE_MAX_ITEMS
   if (snap.timelineItems.length <= max) return
   const drop = snap.timelineItems.length - max
-  const droppedIds = new Set(snap.timelineItems.slice(0, drop).map((item) => item.id))
+  const dropped = snap.timelineItems.slice(0, drop)
+  const droppedIds = new Set(dropped.map((item) => item.id))
+  const persistedEntryOverlap = [...(snap.persistedEntryOverlap ?? [])]
+  for (const item of dropped) {
+    const entryId = item.sessionEntryId
+    if (entryId) appendPersistedOverlap(persistedEntryOverlap, entryId)
+  }
+  snap.persistedEntryOverlap = persistedEntryOverlap.slice(
+    -BACKGROUND_LIVE_PERSISTED_OVERLAP_MAX,
+  )
   snap.timelineItems = snap.timelineItems.slice(drop)
   if (snap.streamingAssistantId && droppedIds.has(snap.streamingAssistantId)) {
     snap.streamingAssistantId = null
