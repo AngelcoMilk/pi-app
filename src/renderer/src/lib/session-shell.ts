@@ -235,12 +235,9 @@ export function bindViewToUiStore(view: SessionView): void {
     state.setSessionRuntimeRunning(view.sessionKey, true)
   }
 
-  const streamingAssistantId =
-    view.streamingAssistantId ?? live?.streamingAssistantId ?? null
-  const optimisticPendingUserText =
-    view.optimisticPendingUserText ?? live?.optimisticPendingUserText ?? null
-  const agentTurnBootstrapping =
-    view.agentTurnBootstrapping || live?.agentTurnBootstrapping === true
+  const streamingAssistantId = view.streamingAssistantId
+  const optimisticPendingUserText = view.optimisticPendingUserText
+  const agentTurnBootstrapping = view.agentTurnBootstrapping
 
   useUIStore.setState({
     currentSessionId: view.sessionId,
@@ -293,19 +290,20 @@ function mergeLiveIntoItems(sessionKey: string, diskItems: TimelineItem[]): Time
 }
 
 /** Prefer the timeline that keeps more user turns and structure (anti misalignment). */
+function timelineRichnessScore(items: TimelineItem[]): number {
+  const users = items.reduce((n, item) => (item.type === 'user-message' ? n + 1 : n), 0)
+  const asstChars = items.reduce(
+    (n, item) =>
+      item.type === 'assistant-message'
+        ? n + (item.text?.length ?? 0) + (item.thinkingText?.length ?? 0)
+        : n,
+    0,
+  )
+  return users * 1_000_000_000 + items.length * 1_000_000 + asstChars
+}
+
 function pickRicherTimeline(a: TimelineItem[], b: TimelineItem[]): TimelineItem[] {
-  const score = (items: TimelineItem[]) => {
-    const users = items.reduce((n, item) => (item.type === 'user-message' ? n + 1 : n), 0)
-    const asstChars = items.reduce(
-      (n, item) =>
-        item.type === 'assistant-message'
-          ? n + (item.text?.length ?? 0) + (item.thinkingText?.length ?? 0)
-          : n,
-      0,
-    )
-    return users * 1_000_000_000 + items.length * 1_000_000 + asstChars
-  }
-  return score(a) >= score(b) ? a : b
+  return timelineRichnessScore(a) >= timelineRichnessScore(b) ? a : b
 }
 
 /**
@@ -349,11 +347,15 @@ export function focusSessionSync(sessionId: string, sessionFile: string): {
         ...view,
         items: remixedItems,
         runUI: 'running',
-        streamingAssistantId: view.streamingAssistantId ?? live?.streamingAssistantId ?? null,
-        optimisticPendingUserText:
-          view.optimisticPendingUserText ?? live?.optimisticPendingUserText ?? null,
-        agentTurnBootstrapping:
-          view.agentTurnBootstrapping || live?.agentTurnBootstrapping === true,
+        streamingAssistantId: live
+          ? live.streamingAssistantId
+          : view.streamingAssistantId,
+        optimisticPendingUserText: live
+          ? live.optimisticPendingUserText
+          : view.optimisticPendingUserText,
+        agentTurnBootstrapping: live
+          ? live.agentTurnBootstrapping
+          : view.agentTurnBootstrapping,
       }
     } else {
       const resolved = resolveRunUI(sessionKey, {
@@ -458,11 +460,15 @@ export async function hydrateSessionView(
           historyTotal: Math.max(hist.totalCount, existing?.historyTotal ?? 0),
           historyLoaded: Math.max(hist.sourceCount, existing?.historyLoaded ?? 0),
           runUI,
-          streamingAssistantId: live?.streamingAssistantId ?? existing?.streamingAssistantId ?? null,
-          optimisticPendingUserText:
-            live?.optimisticPendingUserText ?? existing?.optimisticPendingUserText ?? null,
-          agentTurnBootstrapping:
-            live?.agentTurnBootstrapping ?? existing?.agentTurnBootstrapping ?? false,
+          streamingAssistantId: live
+            ? live.streamingAssistantId
+            : (existing?.streamingAssistantId ?? null),
+          optimisticPendingUserText: live
+            ? live.optimisticPendingUserText
+            : (existing?.optimisticPendingUserText ?? null),
+          agentTurnBootstrapping: live
+            ? live.agentTurnBootstrapping
+            : (existing?.agentTurnBootstrapping ?? false),
           pendingSteering: live?.pendingSteering
             ? [...live.pendingSteering]
             : existing?.pendingSteering
@@ -497,6 +503,13 @@ export async function hydrateSessionView(
       return
     }
 
+    const focusedHere = sessionFilesEqual(focusKey, sessionKey)
+    let focusedState: ReturnType<typeof useUIStore.getState> | null = null
+    if (focusedHere && sessionFilesEqual(useUIStore.getState().historySessionFile, sessionKey)) {
+      flushStreamPendingSync(useUIStore.getState, useUIStore.setState)
+      focusedState = useUIStore.getState()
+    }
+
     const diskItems = sanitizeHistoryTimeline(hist.items as TimelineItem[])
     const projected = projectTimelineItems(diskItems) as TimelineItem[]
     let merged = mergeLiveIntoItems(sessionKey, projected)
@@ -510,6 +523,12 @@ export async function hydrateSessionView(
     ) {
       const fromPrior = mergeLiveIntoItems(sessionKey, priorItems)
       merged = pickRicherTimeline(fromPrior, merged)
+    }
+
+    if (focusedState?.timelineItems.length) {
+      const focusedItems = projectTimelineItems(focusedState.timelineItems) as TimelineItem[]
+      const withFocusedTail = mergeLiveTimelineWithHistoryTail(projected, focusedItems)
+      merged = pickRicherTimeline(withFocusedTail, merged)
     }
 
     const live = getLiveSessionTimeline(sessionKey)
@@ -527,13 +546,27 @@ export async function hydrateSessionView(
       live?.optimisticPendingUserText != null ||
       live?.agentTurnBootstrapping === true
 
+    const streamingAssistantId = focusedState
+      ? focusedState.streamingAssistantId
+      : live
+        ? live.streamingAssistantId
+        : (existing?.streamingAssistantId ?? null)
+    const optimisticPendingUserText = focusedState
+      ? focusedState.optimisticPendingUserText
+      : live
+        ? live.optimisticPendingUserText
+        : (existing?.optimisticPendingUserText ?? null)
+    const agentTurnBootstrapping = focusedState
+      ? focusedState.agentTurnBootstrapping
+      : live
+        ? live.agentTurnBootstrapping
+        : (existing?.agentTurnBootstrapping ?? false)
+
     const runUI = resolveRunUI(sessionKey, {
       runtime,
-      streamingAssistantId: live?.streamingAssistantId ?? existing?.streamingAssistantId ?? null,
-      optimisticPendingUserText:
-        live?.optimisticPendingUserText ?? existing?.optimisticPendingUserText ?? null,
-      agentTurnBootstrapping:
-        live?.agentTurnBootstrapping ?? existing?.agentTurnBootstrapping ?? false,
+      streamingAssistantId,
+      optimisticPendingUserText,
+      agentTurnBootstrapping,
       workerSessionFile: sessionKey,
       workerStatus:
         runtimeSaysRunning || liveSaysRunning || priorRunUI === 'running' ? 'running' : 'idle',
@@ -557,11 +590,9 @@ export async function hydrateSessionView(
       historyTotal: hist.totalCount,
       historyLoaded: Math.min(hist.totalCount, hist.sourceCount),
       runUI: finalRunUI,
-      streamingAssistantId: live?.streamingAssistantId ?? existing?.streamingAssistantId ?? null,
-      optimisticPendingUserText:
-        live?.optimisticPendingUserText ?? existing?.optimisticPendingUserText ?? null,
-      agentTurnBootstrapping:
-        live?.agentTurnBootstrapping ?? existing?.agentTurnBootstrapping ?? false,
+      streamingAssistantId,
+      optimisticPendingUserText,
+      agentTurnBootstrapping,
       pendingSteering: live?.pendingSteering
         ? [...live.pendingSteering]
         : existing?.pendingSteering
