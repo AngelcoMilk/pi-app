@@ -26,8 +26,17 @@
     "conversations": "对话",
     "firstMsgIsTitle": "首条消息即标题",
     "projects": "项目",
+    "rename": "重命名",
+    "delete": "删除",
     "renamed": "已重命名",
     "renameFailed": "重命名失败",
+    "renameTempChat": "重命名临时对话",
+    "renameSession": "重命名会话",
+    "renameMissingFile": "无法重命名：缺少会话文件路径",
+    "deleted": "已删除",
+    "deleteFailed": "删除失败",
+    "deleteMissingFile": "无法删除：缺少会话文件路径",
+    "deleteSessionConfirm": "删除会话「{{name}}」？对应的 pi 会话文件将永久删除。",
     "deleteConfirm": "删除「{{name}}」？目录与 pi 会话将一并移除。"
   },
   "composer": {

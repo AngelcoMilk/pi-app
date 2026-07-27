@@ -651,34 +651,6 @@
   .nav-row-active {
     background-color: var(--bg-active) !important;
   }
-  /* 选中指示条：3px 品牌条，light 下 bg-active 与侧栏底色差极小时的主要焦点线索 */
-  .nav-row.nav-row-active::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 50%;
-    width: 3px;
-    height: 60%;
-    transform: translateY(-50%);
-    border-radius: 9999px;
-    background: var(--brand);
-    animation: nav-indicator-in var(--motion-normal) var(--motion-ease);
-  }
-  @keyframes nav-indicator-in {
-    from {
-      height: 0;
-      opacity: 0;
-    }
-    to {
-      height: 60%;
-      opacity: 1;
-    }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .nav-row.nav-row-active::before {
-      animation: none;
-    }
-  }
   /* 列表行（div role=button）的可见焦点态，与右键菜单条目一致 */
   .nav-focus-ring:focus-visible {
     outline: none;

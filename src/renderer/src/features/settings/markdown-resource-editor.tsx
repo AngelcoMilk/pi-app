@@ -18,9 +18,9 @@ function RevisionMenu({ revisions, onRestore }: { revisions: Revision[]; onResto
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-1 rounded-md border border-border/50 px-2 py-1 text-[11px] hover:bg-muted"
+        className="flex items-center gap-1 rounded-md border border-border/50 px-2 py-1 text-xs hover:bg-muted"
       >
-        <History className="h-3.5 w-3.5" />
+        <History className="h-3 w-3" strokeWidth={2} />
         {t('settings:prompts.revision', { count: revisions.length })}
       </button>
       {open && (
@@ -31,7 +31,7 @@ function RevisionMenu({ revisions, onRestore }: { revisions: Revision[]; onResto
               <button
                 key={r.id}
                 type="button"
-                className="flex w-full flex-col rounded px-2 py-1.5 text-left text-[10px] hover:bg-muted"
+                className="flex w-full flex-col rounded px-2 py-1.5 text-left text-2xs hover:bg-muted"
                 onClick={() => {
                   setOpen(false)
                   onRestore(r.id)
@@ -140,21 +140,21 @@ export function MarkdownResourceEditor({
 
   if (!path) {
     return (
-      <div className="flex h-full min-h-[280px] items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/15 text-[12px] text-muted-foreground">
+      <div className="flex h-full min-h-[280px] items-center justify-center rounded-lg border border-dashed border-border/60 bg-muted/15 text-sm text-muted-foreground">
         {t('settings:prompts.selectLeftToEdit')}
       </div>
     )
   }
 
   return (
-    <div className="flex h-full min-h-[420px] flex-col overflow-hidden rounded-xl border border-border/60 bg-card/30">
+    <div className="flex h-full min-h-[420px] flex-col overflow-hidden rounded-lg border border-border/60 bg-card/30">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/50 px-3 py-2">
         <div className="min-w-0">
-          <div className="truncate text-[13px] font-medium">{title}</div>
-          <div className="truncate font-mono text-[10px] text-muted-foreground">{loadedPath}</div>
+          <div className="truncate text-base font-medium">{title}</div>
+          <div className="truncate font-mono text-2xs text-muted-foreground">{loadedPath}</div>
         </div>
         <div className="flex flex-wrap items-center gap-1">
-          <div className="flex rounded-md border border-border/50 p-0.5 text-[10px]">
+          <div className="flex rounded-md border border-border/50 p-0.5 text-2xs">
             {(readOnly ? (['preview'] as const) : (['edit', 'split', 'preview'] as const)).map((tabName) => (
               <button
                 key={tabName}
@@ -173,7 +173,7 @@ export function MarkdownResourceEditor({
             <RevisionMenu revisions={revisions} onRestore={(id) => void restore(id)} />
           )}
           {!readOnly && dirty && (
-            <span className="text-[10px] text-amber-600 dark:text-amber-400">{t('settings:prompts.unsavedHint')}</span>
+            <span className="text-2xs text-amber-600 dark:text-amber-400">{t('settings:prompts.unsavedHint')}</span>
           )}
         </div>
       </div>
@@ -186,12 +186,12 @@ export function MarkdownResourceEditor({
       >
         {!readOnly && (tab === 'edit' || tab === 'split') && (
           <div className="flex min-h-0 flex-col border-r border-border/40">
-            <div className="flex items-center gap-1 border-b border-border/30 px-2 py-1 text-[10px] text-muted-foreground">
-              <FileCode className="h-3 w-3" /> {t('settings:prompts.markdownSource')}
+            <div className="flex items-center gap-1 border-b border-border/30 px-2 py-1 text-2xs text-muted-foreground">
+              <FileCode className="h-3 w-3" strokeWidth={2} /> {t('settings:prompts.markdownSource')}
             </div>
             <textarea
               readOnly={readOnly}
-              className="min-h-0 flex-1 resize-none bg-transparent p-3 font-mono text-[12px] leading-relaxed text-foreground outline-none"
+              className="min-h-0 flex-1 resize-none bg-transparent p-3 font-mono text-sm leading-relaxed text-foreground outline-none"
               value={content}
               spellCheck={false}
               onChange={(e) => {
@@ -204,10 +204,10 @@ export function MarkdownResourceEditor({
         )}
         {(tab === 'preview' || tab === 'split') && (
           <div className="flex min-h-0 flex-col overflow-hidden">
-            <div className="flex items-center gap-1 border-b border-border/30 px-2 py-1 text-[10px] text-muted-foreground">
-              <Eye className="h-3 w-3" /> {t('settings:prompts.preview')}
+            <div className="flex items-center gap-1 border-b border-border/30 px-2 py-1 text-2xs text-muted-foreground">
+              <Eye className="h-3 w-3" strokeWidth={2} /> {t('settings:prompts.preview')}
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 text-[14px] leading-relaxed">
+            <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 text-lg leading-relaxed">
               <MarkdownView>{content || t('settings:prompts.emptyContent')}</MarkdownView>
             </div>
           </div>

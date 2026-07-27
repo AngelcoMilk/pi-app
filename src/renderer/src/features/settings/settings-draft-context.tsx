@@ -286,7 +286,7 @@ export function SettingsDraftProvider({ children }: { children: ReactNode }) {
   }, [draft, dirty, dirtySliceLabels, loading, saving, patch, discardAll, save, refreshRightPanelCatalog])
 
   if (!value) {
-    return <div className="flex flex-1 items-center justify-center text-[12px] text-muted-foreground">{t('common:loadingSettings')}</div>
+    return <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">{t('common:loadingSettings')}</div>
   }
 
   return <SettingsDraftContext.Provider value={value}>{children}</SettingsDraftContext.Provider>

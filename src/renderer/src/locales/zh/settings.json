@@ -1,6 +1,9 @@
 {
   "title": "设置",
   "nav": {
+    "groupApp": "应用",
+    "groupAgent": "Agent",
+    "groupResources": "资源",
     "general": "通用",
     "appearance": "外观",
     "rightPanels": "右侧栏",
@@ -40,7 +43,7 @@
     "alertOnRunIdleDesc": "当前会话 Agent 空闲（本轮 loop 结束）时提醒",
     "alertOnBackgroundRunIdle": "后台会话完成时也提醒",
     "alertOnBackgroundRunIdleDesc": "其它会话在后台跑完时也发出提醒（默认关闭，避免打扰）",
-    "workers": "会话进程",
+    "workersAdvanced": "会话进程（高级）",
     "advanced": "高级",
     "showAdvanced": "展开",
     "hideAdvanced": "收起",
@@ -48,9 +51,6 @@
     "maxSessionWorkersDesc": "并行 worker 上限；正在运行的会话不会被回收（≥1）",
     "sessionWorkerIdleTimeout": "空闲进程回收（分钟）",
     "sessionWorkerIdleTimeoutDesc": "空闲多久后回收 worker；0 表示不因超时回收",
-    "timeline": "时间线",
-    "timelineToolAutoExpandMax": "工具自动展开上限",
-    "timelineToolAutoExpandMaxDesc": "当前对话运行中，同时自动展开详情的工具条数；0 = 始终折叠（仅淡闪烁，类似 Cursor）。范围 0–50，默认 0",
     "language": "语言",
     "languageDesc": "切换后即时生效",
     "langZh": "中文",
@@ -60,6 +60,9 @@
     "noRecentProjectsHint": "打开工作区后将出现在此"
   },
   "appearance": {
+    "timeline": "时间线",
+    "timelineToolAutoExpandMax": "工具自动展开上限",
+    "timelineToolAutoExpandMaxDesc": "当前对话运行中，同时自动展开详情的工具条数；0 = 始终折叠（仅淡闪烁，类似 Cursor）。范围 0–50，默认 0",
     "title": "外观",
     "description": "主题预览即时生效；持久化需点页面底部「保存」。",
     "theme": "主题",
@@ -346,6 +349,9 @@
     "ctrlEnterHint": "Ctrl+Enter 确认"
   },
   "voice": {
+    "advancedTitle": "高级",
+    "clearSavedToken": "清除已保存的 Token",
+    "accessTokenStoredPlaceholder": "已保存（{{preview}}），留空并保存其它项不会清除；要更换请粘贴新 Token",
     "title": "语音输入",
     "description": "配置语音转写 provider，用于 Composer 录音转文字。未配置时不影响文字输入。",
     "provider": "Provider",
@@ -462,6 +468,7 @@
     }
   },
   "skills": {
+    "title": "Skills",
     "description": "写入 desktopSkillOverrides。修改后请用页面底部「保存」（即时写盘，不重载 Worker）。",
     "hint": "默认全部启用。启停写入 ~/.pi/agent/settings.json",
     "empty": "未发现 skill（先打开工作区）"

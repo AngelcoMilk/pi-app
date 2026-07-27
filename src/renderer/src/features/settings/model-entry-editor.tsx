@@ -6,8 +6,8 @@ import type { PiModelsProviderConfig } from '@shared/ipc-contract'
 export type LocalModelEntry = NonNullable<PiModelsProviderConfig['models']>[number]
 
 const inputCls =
-  'settings-field-focus w-full rounded-md border border-border bg-background px-2 py-1 text-[11px] font-mono'
-const labelCls = 'text-[10px] font-medium text-muted-foreground/80'
+  'settings-field-focus w-full rounded-md border border-border bg-background px-2 py-1 font-mono text-xs'
+const labelCls = 'text-2xs font-medium text-muted-foreground/70'
 
 const THINKING_LEVEL_OPTIONS = [
   'off',
@@ -97,30 +97,31 @@ export function ModelEntryEditor({
           onClick={onToggleExpand}
         >
           <ChevronRight
-            className="settings-chevron h-3.5 w-3.5 shrink-0 text-muted-foreground"
+            className="settings-chevron h-3 w-3 shrink-0 text-muted-foreground"
+            strokeWidth={2}
             data-open={expanded}
           />
           <div className="min-w-0 flex-1">
-            <div className="truncate font-mono text-[12px] font-medium text-foreground" title={model.id}>
+            <div className="truncate font-mono text-sm text-foreground" title={model.id}>
               {model.id}
             </div>
             {model.name && model.name !== model.id && (
-              <div className="truncate text-[11px] text-muted-foreground">{model.name}</div>
+              <div className="truncate text-xs text-muted-foreground">{model.name}</div>
             )}
           </div>
           <div className="hidden shrink-0 flex-wrap justify-end gap-1 sm:flex">
             {model.reasoning && (
-              <span className="rounded-full bg-violet-500/12 px-2 py-0.5 text-[9px] font-medium text-violet-700 transition-opacity duration-motion-fast dark:text-violet-300">
+              <span className="rounded-full bg-violet-500/12 px-2 py-0.5 text-2xs font-medium text-violet-700 transition-opacity duration-motion-fast dark:text-violet-300">
                 {t('models.reasoningBadge')}
               </span>
             )}
             {hasImage && (
-              <span className="rounded-full bg-sky-500/12 px-2 py-0.5 text-[9px] font-medium text-sky-700 transition-opacity duration-motion-fast dark:text-sky-300">
+              <span className="rounded-full bg-sky-500/12 px-2 py-0.5 text-2xs font-medium text-sky-700 transition-opacity duration-motion-fast dark:text-sky-300">
                 {t('models.multimodalBadge')}
               </span>
             )}
             {model.contextWindow != null && (
-              <span className="rounded-full bg-muted px-2 py-0.5 text-[9px] tabular-nums text-muted-foreground">
+              <span className="rounded-full bg-muted px-2 py-0.5 font-mono text-2xs text-muted-foreground">
                 ctx {formatK(model.contextWindow)}
               </span>
             )}
@@ -132,7 +133,7 @@ export function ModelEntryEditor({
           onClick={onRemove}
           aria-label={t('common:delete')}
         >
-          <Trash2 className="h-3.5 w-3.5" />
+          <Trash2 className="h-3 w-3" strokeWidth={2} />
         </button>
       </div>
 
@@ -172,7 +173,7 @@ export function ModelEntryEditor({
               </select>
             </div>
             <div className="flex items-end gap-3">
-              <label className="flex cursor-pointer items-center gap-2 text-[11px]">
+              <label className="flex cursor-pointer items-center gap-2 text-xs">
                 <input
                   type="checkbox"
                   className="rounded border-border transition-colors duration-motion-fast"
@@ -225,14 +226,14 @@ export function ModelEntryEditor({
                   <label className={labelCls}>{t('models.thinkingLevelMap')}</label>
                   <button
                     type="button"
-                    className="settings-chip flex items-center gap-1 rounded-md border border-border/60 px-2 py-0.5 text-[10px] text-muted-foreground hover:text-foreground"
+                    className="settings-chip flex items-center gap-1 rounded-md border border-border/60 px-2 py-0.5 text-2xs text-muted-foreground hover:text-foreground"
                     onClick={addThinkingEntry}
                   >
-                    <Plus className="h-3 w-3" />
+                    <Plus className="h-3 w-3" strokeWidth={2} />
                     {t('models.addBtn')}
                   </button>
                 </div>
-                <p className="mb-2 text-[10px] text-muted-foreground/60">
+                <p className="mb-2 text-2xs text-muted-foreground/50">
                   {/* GUI level name (left) · model param (right). Default high; higher maps here. */}
                 </p>
                 {thinkingEntries.length > 0 && (
@@ -250,7 +251,7 @@ export function ModelEntryEditor({
                             </option>
                           ))}
                         </select>
-                        <span className="shrink-0 text-[10px] text-muted-foreground">→</span>
+                        <span className="shrink-0 text-2xs text-muted-foreground">→</span>
                         <input
                           className={cn(inputCls, 'font-mono')}
                           value={val}
@@ -263,7 +264,7 @@ export function ModelEntryEditor({
                           onClick={() => removeThinkingEntry(key)}
                           aria-label={t('common:delete')}
                         >
-                          <Trash2 className="h-3 w-3" />
+                          <Trash2 className="h-3 w-3" strokeWidth={2} />
                         </button>
                       </div>
                     ))}
@@ -284,7 +285,7 @@ function ToggleChip({ active, onClick, label }: { active: boolean; onClick: () =
       type="button"
       onClick={onClick}
       className={cn(
-        'settings-chip rounded-full border px-3 py-1 text-[11px]',
+        'settings-chip rounded-full border px-3 py-1 text-xs',
         active
           ? 'border-primary/50 bg-primary/10 text-foreground'
           : 'border-border/60 text-muted-foreground',

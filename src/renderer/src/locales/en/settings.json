@@ -1,6 +1,9 @@
 {
   "title": "Settings",
   "nav": {
+    "groupApp": "App",
+    "groupAgent": "Agent",
+    "groupResources": "Resources",
     "general": "General",
     "appearance": "Appearance",
     "rightPanels": "Right Panels",
@@ -40,7 +43,7 @@
     "alertOnRunIdleDesc": "Alert when the focused session Agent goes idle",
     "alertOnBackgroundRunIdle": "Also alert for background sessions",
     "alertOnBackgroundRunIdleDesc": "Notify when a background session finishes (off by default)",
-    "workers": "Session workers",
+    "workersAdvanced": "Session workers (advanced)",
     "advanced": "Advanced",
     "showAdvanced": "Show",
     "hideAdvanced": "Hide",
@@ -48,9 +51,6 @@
     "maxSessionWorkersDesc": "Parallel worker cap; running sessions are never reclaimed (≥1)",
     "sessionWorkerIdleTimeout": "Idle reclaim (minutes)",
     "sessionWorkerIdleTimeoutDesc": "Reclaim idle workers after N minutes; 0 = never by timeout",
-    "timeline": "Timeline",
-    "timelineToolAutoExpandMax": "Max auto-expanded tools",
-    "timelineToolAutoExpandMaxDesc": "During an active run, how many recent tool rows auto-expand details; 0 = always collapsed like Cursor (only subtle pulse). Range 0–50, default 0",
     "language": "Language",
     "languageDesc": "Takes effect immediately",
     "langZh": "中文",
@@ -60,6 +60,9 @@
     "noRecentProjectsHint": "Open a workspace to see it here"
   },
   "appearance": {
+    "timeline": "Timeline",
+    "timelineToolAutoExpandMax": "Max auto-expanded tools",
+    "timelineToolAutoExpandMaxDesc": "During an active run, how many recent tool rows auto-expand details; 0 = always collapsed like Cursor (only subtle pulse). Range 0–50, default 0",
     "title": "Appearance",
     "description": "Theme preview updates instantly; persist with \"Save\" at the bottom.",
     "theme": "Theme",
@@ -346,6 +349,9 @@
     "ctrlEnterHint": "Ctrl+Enter to confirm"
   },
   "voice": {
+    "advancedTitle": "Advanced",
+    "clearSavedToken": "Clear saved token",
+    "accessTokenStoredPlaceholder": "Saved ({{preview}}). Leaving this empty keeps it; paste a new token to replace it.",
     "title": "Voice Input",
     "description": "Configure a transcription provider for Composer voice-to-text. When not configured, text input is unaffected.",
     "provider": "Provider",
@@ -462,6 +468,7 @@
     }
   },
   "skills": {
+    "title": "Skills",
     "description": "Writes to desktopSkillOverrides. Use \"Save\" at the bottom (writes to disk immediately, no Worker reload).",
     "hint": "All enabled by default. Toggles are written to ~/.pi/agent/settings.json",
     "empty": "No skills found (open a workspace first)"

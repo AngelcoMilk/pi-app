@@ -74,7 +74,7 @@ export function SkillsManagerConfig({
               )}
             >
               <div className="min-w-0 flex-1">
-                <div className="font-mono text-[12px] font-medium">{sk.name}</div>
+                <div className="font-mono text-[12px] text-foreground">{sk.name}</div>
                 {sk.description && (
                   <div className="truncate text-[11px] text-muted-foreground">{sk.description}</div>
                 )}

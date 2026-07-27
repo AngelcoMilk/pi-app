@@ -8,6 +8,7 @@ import { AdapterConfigPanel } from './adapter-config-panel'
 import { CUSTOM_CONFIG_RENDERERS } from './custom-config-renderers'
 import type { AdapterJson } from '@extension-compat/adapter-schema'
 import { resolveAdapterText } from '@extension-compat/adapter-schema'
+import { SettingsPageHeader } from '@renderer/features/settings/settings-shell'
 
 export function ExtensionConfigSubpage({ extensionId }: { extensionId: string }) {
   const { t, i18n } = useTranslation()
@@ -30,7 +31,7 @@ export function ExtensionConfigSubpage({ extensionId }: { extensionId: string })
       .finally(() => setLoading(false))
   }, [extensionId])
 
-  if (loading) return <div className="text-[12px] text-muted-foreground/50">{t('common:loading')}</div>
+  if (loading) return <div className="text-sm text-muted-foreground/70">{t('common:loading')}</div>
 
   const info = jsonAdapter
     ? (() => {
@@ -64,10 +65,7 @@ export function ExtensionConfigSubpage({ extensionId }: { extensionId: string })
 
   return (
     <div className="space-y-4">
-      <div>
-        <h3 className="text-[15px] font-semibold">{info.displayName}</h3>
-        {info.description && <p className="mt-0.5 text-[12px] text-muted-foreground/70">{info.description}</p>}
-      </div>
+      <SettingsPageHeader title={info.displayName} description={info.description} />
 
       {jsonAdapter ? (
         CustomRenderer ? (
@@ -77,8 +75,8 @@ export function ExtensionConfigSubpage({ extensionId }: { extensionId: string })
         )
       ) : (
         <div className="rounded-lg border border-dashed border-border/60 bg-muted/20 p-4">
-          <div className="text-[12px] font-medium text-foreground/80">{t('extension:unregisteredAdapter')}</div>
-          <div className="mt-1 text-[12px] text-muted-foreground/70">
+          <div className="text-base font-medium text-foreground/80">{t('extension:unregisteredAdapter')}</div>
+          <div className="mt-1 text-sm text-muted-foreground/70">
             {t('extension:noAdapterHint')}
           </div>
         </div>
@@ -86,10 +84,10 @@ export function ExtensionConfigSubpage({ extensionId }: { extensionId: string })
 
       {info.tools.length > 0 && (
         <div>
-          <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60 mb-1.5">{t('extension:registeredTools')}</div>
+          <div className="mb-1.5 text-2xs font-medium uppercase tracking-wider text-muted-foreground/50">{t('extension:registeredTools')}</div>
           <div className="flex flex-wrap gap-1">
             {info.tools.map((t) => (
-              <span key={t} className="rounded bg-muted/70 px-1.5 py-0.5 font-mono text-[10px]">{t}</span>
+              <span key={t} className="rounded bg-muted/70 px-1.5 py-0.5 font-mono text-2xs">{t}</span>
             ))}
           </div>
         </div>
@@ -97,10 +95,10 @@ export function ExtensionConfigSubpage({ extensionId }: { extensionId: string })
 
       {info.commands.length > 0 && (
         <div>
-          <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60 mb-1.5">{t('extension:registeredCommands')}</div>
+          <div className="mb-1.5 text-2xs font-medium uppercase tracking-wider text-muted-foreground/50">{t('extension:registeredCommands')}</div>
           <div className="flex flex-wrap gap-1">
             {info.commands.map((c) => (
-              <span key={c} className="rounded bg-muted/70 px-1.5 py-0.5 font-mono text-[10px]">{c}</span>
+              <span key={c} className="rounded bg-muted/70 px-1.5 py-0.5 font-mono text-2xs">{c}</span>
             ))}
           </div>
         </div>

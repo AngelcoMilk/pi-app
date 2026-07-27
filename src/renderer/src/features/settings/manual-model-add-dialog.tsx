@@ -119,13 +119,13 @@ export function ManualModelAddDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="ui-enter w-full max-w-md rounded-xl border border-border bg-popover p-4 text-popover-foreground shadow-xl"
+        className="ui-enter w-full max-w-md rounded-lg border border-border bg-popover p-4 text-popover-foreground shadow-xl"
         onPointerDown={(e) => e.stopPropagation()}
       >
-        <h2 id={titleId} className="text-[15px] font-semibold text-foreground">
+        <h2 id={titleId} className="text-xl font-semibold text-foreground">
           {tr('models.manualAddTitle')}
         </h2>
-        <p className="mt-1 text-[12px] text-muted-foreground">
+        <p className="mt-1 text-sm text-muted-foreground">
           {tr('models.providerLabelPrefix')} <span className="font-medium text-foreground/90">{providerLabel}</span>
           {tr('models.manualAddHint')}
         </p>
@@ -134,7 +134,7 @@ export function ManualModelAddDialog({
           rows={3}
           disabled={busy}
           placeholder={tr('models.manualAddPlaceholder')}
-          className="settings-field-focus mt-3 w-full resize-y rounded-lg border border-border bg-background px-3 py-2 font-mono text-[12px] leading-relaxed"
+          className="settings-field-focus mt-3 w-full resize-y rounded-lg border border-border bg-background px-3 py-2 font-mono text-sm leading-relaxed"
           value={value}
           onChange={(e) => {
             setValue(e.target.value)
@@ -145,18 +145,18 @@ export function ManualModelAddDialog({
           }}
         />
         {value.trim() && (
-          <p className="mt-2 text-[11px] text-muted-foreground">
+          <p className="mt-2 text-xs text-muted-foreground">
             {tr('models.willAdd', { count: valid.length })}
             {dup.length > 0 && <span> · {tr('models.skipDuplicates', { count: dup.length })}</span>}
             {invalid.length > 0 && <span className="text-amber-700 dark:text-amber-300"> · {tr('models.invalidFormat')} {invalid.length}</span>}
           </p>
         )}
-        {error && <p className="mt-2 text-[12px] text-destructive">{error}</p>}
+        {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
         <div className="mt-4 flex justify-end gap-2">
           <button
             type="button"
             disabled={busy}
-            className="settings-chip rounded-md px-3 py-1.5 text-[13px] text-muted-foreground hover:bg-accent disabled:opacity-50"
+            className="settings-chip rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:bg-accent disabled:opacity-50"
             onClick={onCancel}
           >
             {tr('models.cancelBtn')}
@@ -164,13 +164,13 @@ export function ManualModelAddDialog({
           <button
             type="button"
             disabled={busy || !value.trim()}
-            className="settings-chip rounded-md bg-primary px-3 py-1.5 text-[13px] text-primary-foreground disabled:opacity-50"
+            className="settings-chip rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground disabled:opacity-50"
             onClick={() => void submit()}
           >
             {busy ? tr('models.adding') : valid.length > 1 ? tr('models.addCount', { count: valid.length }) : tr('models.add')}
           </button>
         </div>
-        <p className="mt-2 text-[10px] text-muted-foreground/70">{tr('models.ctrlEnterHint')}</p>
+        <p className="mt-2 text-2xs text-muted-foreground/70">{tr('models.ctrlEnterHint')}</p>
       </div>
     </div>,
     document.body,

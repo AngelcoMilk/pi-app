@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { cn } from '@renderer/lib/utils'
 import { ipcClient } from '@renderer/lib/ipc-client'
 import { SettingsPageHeader } from '@renderer/features/settings/settings-shell'
+import { btnDanger } from '@renderer/features/settings/settings-controls'
 import { Switch } from '@renderer/components/ui/switch'
 
 export function ExtensionsSettings() {
@@ -88,18 +89,18 @@ export function ExtensionsSettings() {
   const watchedTools = ['fast_context_search', 'search', 'search_sources', 'ffgrep', 'fffind']
 
   return (
-    <div className="space-y-1 w-full">
+    <div className="w-full">
       <SettingsPageHeader
         title={t('settings:extensions.title')}
         description={t('settings:extensions.description')}
       />
       {missingRuntime.length > 0 && (
         <div className="mb-3 rounded-lg border border-amber-500/35 bg-amber-500/8 p-3">
-          <div className="text-[12px] font-medium text-amber-800 dark:text-amber-200">{t('settings:extensions.missingRuntime')}</div>
-          <p className="mt-1 text-[11px] text-foreground-secondary leading-relaxed">
+          <div className="text-sm font-medium text-amber-800 dark:text-amber-200">{t('settings:extensions.missingRuntime')}</div>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
             {t('settings:extensions.missingRuntimeDesc')}
           </p>
-          <ul className="mt-2 space-y-1 text-[11px] font-mono text-foreground-secondary">
+          <ul className="mt-2 space-y-1 font-mono text-xs text-muted-foreground">
             {missingRuntime.map((m) => (
               <li key={m.entry}>· {m.repoFolder} → {m.entry}</li>
             ))}
@@ -107,7 +108,7 @@ export function ExtensionsSettings() {
           <button
             type="button"
             disabled={syncing}
-            className="mt-2 rounded-md bg-primary px-3 py-1.5 text-[12px] text-primary-foreground disabled:opacity-50"
+            className={cn(btnDanger, 'mt-2')}
             onClick={() => {
               setSyncing(true)
               ipcClient.invoke('extensions.syncGitPackages').then((r) => {
@@ -122,7 +123,7 @@ export function ExtensionsSettings() {
         </div>
       )}
       <div className="mb-3 rounded-lg border border-border/50 bg-muted/20 p-2.5">
-        <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60">
+        <div className="text-2xs font-medium uppercase tracking-wider text-muted-foreground/50">
           {t('settings:extensions.workerTools')} {runtimeTools.length ? `(${runtimeTools.length})` : t('settings:extensions.workerToolsEmpty')}
         </div>
         <div className="mt-1 flex flex-wrap gap-1">
@@ -130,7 +131,7 @@ export function ExtensionsSettings() {
             <span
               key={name}
               className={cn(
-                'rounded px-1.5 py-0.5 font-mono text-[10px]',
+                'rounded px-1.5 py-0.5 font-mono text-2xs',
                 runtimeNames.has(name) ? 'bg-green-500/10 text-green-700 dark:text-green-400' : 'bg-muted text-muted-foreground/45',
               )}
             >
@@ -140,7 +141,7 @@ export function ExtensionsSettings() {
         </div>
       </div>
       {extensions.length === 0 ? (
-        <div className="text-[12px] text-muted-foreground/50 py-4">
+        <div className="py-4 text-sm text-muted-foreground/70">
           {t('settings:extensions.empty')}
         </div>
       ) : (
@@ -153,12 +154,12 @@ export function ExtensionsSettings() {
                 <div className="flex items-center justify-between">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="text-[13px] font-medium">{ext.name}</span>
-                      <span className={cn('rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider', COMPAT_STYLES[ext.compatibility ?? ''])}>
+                      <span className="text-base font-medium">{ext.name}</span>
+                      <span className={cn('rounded px-1.5 py-0.5 text-2xs font-semibold uppercase tracking-wider', COMPAT_STYLES[ext.compatibility ?? ''])}>
                         {COMPAT_LABELS[ext.compatibility ?? ''] || ext.compatibility}
                       </span>
                       <span className={cn(
-                        'rounded px-1.5 py-0.5 text-[9px] font-medium uppercase',
+                        'rounded px-1.5 py-0.5 text-2xs font-medium uppercase',
                         ext.source === 'project' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground',
                       )}>
                         {ext.source === 'package' ? t('settings:extensions.sourcePackage') : ext.source === 'project' ? t('settings:extensions.sourceProject') : t('settings:extensions.sourceGlobal')}
@@ -166,23 +167,23 @@ export function ExtensionsSettings() {
                       {ext.piSync ? (
                         <span
                           className={cn(
-                            'rounded px-1.5 py-0.5 text-[9px] font-medium',
+                            'rounded px-1.5 py-0.5 text-2xs font-medium',
                             isOn ? 'bg-green-500/12 text-green-700 dark:text-green-400' : 'bg-muted text-muted-foreground',
                           )}
                         >
                           {isOn ? t('settings:extensions.piEnabled') : t('settings:extensions.piDisabled')}
                         </span>
                       ) : (
-                        <span className="rounded px-1.5 py-0.5 text-[9px] text-muted-foreground">{t('settings:extensions.notSynced')}</span>
+                        <span className="rounded px-1.5 py-0.5 text-2xs text-muted-foreground">{t('settings:extensions.notSynced')}</span>
                       )}
                     </div>
                     {ext.description && (
-                      <div className="mt-0.5 text-[11px] text-muted-foreground/75 truncate">{ext.description}</div>
+                      <div className="mt-0.5 truncate text-xs text-muted-foreground/70">{ext.description}</div>
                     )}
                     {(ext.registeredTools?.length ?? 0) > 0 && (
                       <div className="mt-1 flex flex-wrap gap-1">
                         {(ext.registeredTools ?? []).map((t: string) => (
-                          <span key={t} className="rounded bg-muted/60 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+                          <span key={t} className="rounded bg-muted/60 px-1.5 py-0.5 font-mono text-2xs text-muted-foreground">
                             {t}
                           </span>
                         ))}
@@ -191,32 +192,32 @@ export function ExtensionsSettings() {
                     {(ext.registeredCommands?.length ?? 0) > 0 && (
                       <div className="mt-1 flex flex-wrap gap-1">
                         {(ext.registeredCommands ?? []).map((c: string) => (
-                          <span key={c} className="rounded bg-muted/60 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+                          <span key={c} className="rounded bg-muted/60 px-1.5 py-0.5 font-mono text-2xs text-muted-foreground">
                             /{c}
                           </span>
                         ))}
                       </div>
                     )}
                     {ext.adapterId ? (
-                      <div className="mt-1 text-[10px] text-green-700 dark:text-green-400">
+                      <div className="mt-1 text-2xs text-green-700 dark:text-green-400">
                         {t('settings:extensions.adapterLinked')}<span className="font-medium">{ext.adapterId}</span>
                       </div>
                     ) : ext.tuiOnly ? (
-                      <div className="mt-1 text-[10px] text-muted-foreground/70 italic">
+                      <div className="mt-1 text-2xs italic text-muted-foreground/70">
                         {t('settings:extensions.tuiOnly')}
                       </div>
                     ) : (
-                      <div className="mt-1 text-[10px] text-muted-foreground/55 italic">
+                      <div className="mt-1 text-2xs italic text-muted-foreground/50">
                         {t('settings:extensions.noAdapter')}
                       </div>
                     )}
                     {ext.inSettingsPackages === false && ext.workerLoadHint && (
-                      <div className="mt-1.5 rounded bg-amber-500/10 px-2 py-1 text-[10px] text-amber-900 dark:text-amber-200">
+                      <div className="mt-1.5 rounded bg-amber-500/10 px-2 py-1 text-2xs text-amber-900 dark:text-amber-200">
                         {ext.workerLoadHint}
                       </div>
                     )}
                     {ext.loadError && (
-                      <div className="mt-1 text-[10px] text-destructive">{ext.loadError}</div>
+                      <div className="mt-1 text-2xs text-destructive">{ext.loadError}</div>
                     )}
                   </div>
                   <Switch

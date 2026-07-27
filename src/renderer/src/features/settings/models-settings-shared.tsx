@@ -11,13 +11,7 @@ export const API_OPTS = [
   { v: 'google-generative-ai', l: 'Google Generative AI' },
 ] as const
 
-export const inputCls =
-  'settings-field-focus w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-[12px] font-mono'
-export const selectCls = 'settings-field-focus rounded-md border border-border bg-background px-2.5 py-1.5 text-[12px]'
-export const btnOutline =
-  'settings-chip rounded-md border border-border bg-background px-2.5 py-1.5 text-[12px] disabled:opacity-40'
-export const btnPrimary =
-  'settings-chip rounded-md bg-primary px-2.5 py-1.5 text-[12px] text-primary-foreground disabled:opacity-40'
+export { btnDanger, btnOutline, btnPrimary, inputCls, selectCls } from './settings-controls'
 
 export function cloneConfig(c: PiModelsConfigPayload): PiModelsConfigPayload {
   return JSON.parse(JSON.stringify(c)) as PiModelsConfigPayload
@@ -40,7 +34,7 @@ export function ProviderAvatar({ preset, label }: { preset?: ProviderPreset; lab
   return (
     <span
       className={cn(
-        'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[11px] font-bold text-white shadow-sm transition-transform duration-motion-fast ease-motion-ease',
+        'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white shadow-sm transition-transform duration-motion-fast ease-motion-ease',
         preset?.accentClass ?? 'bg-muted-foreground/40',
       )}
       title={label}

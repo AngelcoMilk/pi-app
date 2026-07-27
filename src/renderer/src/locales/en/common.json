@@ -26,8 +26,17 @@
     "conversations": "Conversations",
     "firstMsgIsTitle": "First message is the title",
     "projects": "Projects",
+    "rename": "Rename",
+    "delete": "Delete",
     "renamed": "Renamed",
     "renameFailed": "Rename failed",
+    "renameTempChat": "Rename temp chat",
+    "renameSession": "Rename session",
+    "renameMissingFile": "Cannot rename: session file path is missing",
+    "deleted": "Deleted",
+    "deleteFailed": "Delete failed",
+    "deleteMissingFile": "Cannot delete: session file path is missing",
+    "deleteSessionConfirm": "Delete session \"{{name}}\"? Its pi session file will be permanently removed.",
     "deleteConfirm": "Delete \"{{name}}\"? Directory and pi sessions will be removed."
   },
   "composer": {

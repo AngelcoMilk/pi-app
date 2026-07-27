@@ -48,14 +48,14 @@ export function ConfirmDialog({
         className="w-full max-w-sm rounded-lg border border-border bg-popover p-4 text-popover-foreground shadow-xl"
         onPointerDown={(e) => e.stopPropagation()}
       >
-        <h2 id={titleId} className="mb-2 text-[14px] font-semibold text-foreground">
+        <h2 id={titleId} className="mb-2 text-lg font-semibold text-foreground">
           {title}
         </h2>
-        <p className="mb-4 text-[13px] leading-relaxed text-muted-foreground">{message}</p>
+        <p className="mb-4 text-base leading-relaxed text-muted-foreground">{message}</p>
         <div className="flex justify-end gap-2">
           <button
             type="button"
-            className="rounded-md px-3 py-1.5 text-[13px] text-foreground-secondary hover:bg-accent hover:text-accent-foreground"
+            className="rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground"
             onClick={onCancel}
           >
             {t('common:cancel')}
@@ -63,7 +63,7 @@ export function ConfirmDialog({
           <button
             type="button"
             className={cn(
-              'rounded-md px-3 py-1.5 text-[13px] text-white',
+              'rounded-md px-3 py-1.5 text-sm text-white',
               destructive
                 ? 'bg-destructive hover:bg-destructive/90'
                 : 'bg-primary hover:bg-primary/90',

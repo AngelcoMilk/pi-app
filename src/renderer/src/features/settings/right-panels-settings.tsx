@@ -3,14 +3,11 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { GripVertical, LayoutPanelLeft } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
-import { Switch } from '@renderer/components/ui/switch'
 import { useSettingsDraft } from '@renderer/features/settings/settings-draft-context'
 import type { RightPanelCatalogItem } from '@shared/right-panels'
 import { SettingsPageHeader } from '@renderer/features/settings/settings-shell'
-
-function Toggle({ on, onChange, disabled }: { on: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
-  return <Switch checked={on} onCheckedChange={onChange} disabled={disabled} />
-}
+import { Toggle } from '@renderer/features/settings/settings-page-shared'
+import { btnOutline } from '@renderer/features/settings/settings-controls'
 
 export function RightPanelsSettings() {
   const { t } = useTranslation()
@@ -51,14 +48,14 @@ export function RightPanelsSettings() {
             <button
               type="button"
               onClick={() => resetRightPanelsToDefault()}
-              className="rounded-md border border-border/50 px-3 py-1.5 text-[12px] text-muted-foreground hover:bg-accent hover:text-foreground"
+              className={btnOutline}
             >
               {t('common:resetToDefault')}
             </button>
             <button
               type="button"
               onClick={() => void refreshRightPanelCatalog()}
-              className="rounded-md border border-border/50 px-3 py-1.5 text-[12px] text-muted-foreground hover:bg-accent hover:text-foreground"
+              className={btnOutline}
             >
               {t('settings:rightPanels.refreshCatalog')}
             </button>
@@ -66,8 +63,8 @@ export function RightPanelsSettings() {
         }
       />
 
-      <div className="mb-4 flex items-center gap-2 rounded-lg border border-border/40 bg-[var(--bg-1)]/50 px-3 py-2 text-[12px] text-muted-foreground">
-        <LayoutPanelLeft className="h-4 w-4 shrink-0 opacity-60" />
+      <div className="mb-4 flex items-center gap-2 rounded-lg border border-border/40 bg-[var(--bg-1)]/50 px-3 py-2 text-sm text-muted-foreground">
+        <LayoutPanelLeft className="h-4 w-4 shrink-0 text-muted-foreground/50" strokeWidth={1.5} />
         <span>
           {t('settings:rightPanels.enabledCount', { enabled: enabledCount, total: order.length })}
         </span>
@@ -127,13 +124,13 @@ export function RightPanelsSettings() {
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <div className="text-[13px] font-medium text-foreground">{label}</div>
+                    <div className="text-base font-medium text-foreground">{label}</div>
                     {item.source === 'adapter' && (
-                      <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[9px] text-primary">{t('adapters:title')}</span>
+                      <span className="rounded bg-primary/10 px-1.5 py-0.5 text-2xs text-primary">{t('adapters:title')}</span>
                     )}
                   </div>
-                  <div className="mt-0.5 text-[11px] text-muted-foreground/70">{desc}</div>
-                  <div className="mt-1 font-mono text-[10px] text-muted-foreground/45">
+                  <div className="mt-0.5 text-xs text-muted-foreground/70">{desc}</div>
+                  <div className="mt-1 font-mono text-2xs text-muted-foreground/50">
                     {item.id}
                     {item.adapterId ? ` · ${item.adapterId}` : ''}
                   </div>
@@ -148,7 +145,7 @@ export function RightPanelsSettings() {
                     isDragging && 'cursor-grabbing text-primary',
                   )}
                 >
-                  <GripVertical className="h-4 w-4" />
+                  <GripVertical className="h-4 w-4" strokeWidth={1.5} />
                 </div>
               </div>
             </li>

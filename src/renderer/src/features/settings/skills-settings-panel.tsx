@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { RefreshCw } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
 import { ipcClient } from '@renderer/lib/ipc-client'
+import { Switch } from '@renderer/components/ui/switch'
+import { SettingsPageHeader } from '@renderer/features/settings/settings-shell'
 import { useSettingsDirtySlice } from '@renderer/features/settings/use-settings-dirty-slice'
 import { notifySettingsDirtyChanged } from '@renderer/features/settings/settings-dirty-registry'
 
@@ -71,7 +73,7 @@ export function SkillsSettingsPanel() {
 
   useSettingsDirtySlice({
     id: 'skills',
-    label: 'Skills',
+    label: t('settings:skills.title'),
     isDirty: () => !overridesEqual(draftRef.current, baselineRef.current),
     commit: async () => {
       const list = skillsRef.current
@@ -113,61 +115,43 @@ export function SkillsSettingsPanel() {
   }
 
   return (
-    <div className="w-full space-y-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h3 className="text-[15px] font-semibold">Skills</h3>
-          <p className="mt-1 text-[11px] text-muted-foreground/75 leading-relaxed">
-            {t('settings:skills.hint')}
-          </p>
-        </div>
-        <button type="button" className="rounded-md p-2 hover:bg-muted" title={t('common:refresh')} onClick={() => void load()}>
-          <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} />
-        </button>
-      </div>
+    <div className="w-full">
+      <SettingsPageHeader
+        title={t('settings:skills.title')}
+        description={t('settings:skills.hint')}
+        action={
+          <button
+            type="button"
+            className="chrome-icon-btn rounded-md p-2"
+            aria-label={t('common:refresh')}
+            title={t('common:refresh')}
+            onClick={() => void load()}
+          >
+            <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} strokeWidth={1.5} />
+          </button>
+        }
+      />
 
-      <div className="rounded-xl border border-border/50 bg-card/20">
-        {loading ? (
-          <p className="p-4 text-[12px] text-muted-foreground">{t('common:loading')}</p>
-        ) : displayRows.length === 0 ? (
-          <p className="p-4 text-[12px] text-muted-foreground">{t('settings:skills.empty')}</p>
-        ) : (
-          <ul className="divide-y divide-border/40">
-            {displayRows.map((s) => (
-              <li key={s.key} className="flex items-center gap-3 px-4 py-3">
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={s.enabled}
-                  onClick={() => toggle(s)}
-                  className={cn(
-                    'h-5 w-9 shrink-0 rounded-full transition-colors',
-                    s.enabled ? 'bg-primary' : 'bg-muted-foreground/25 dark:bg-[var(--bg-3)]',
-                  )}
-                >
-                  <span
-                    className={cn(
-                      'block h-4 w-4 rounded-full bg-white shadow transition-transform',
-                      'dark:bg-[var(--text-primary)]',
-                      s.enabled && 'dark:bg-[hsl(var(--primary-foreground))]',
-                      s.enabled ? 'translate-x-[18px]' : 'translate-x-0.5',
-                    )}
-                  />
-                </button>
-                <div className="min-w-0 flex-1">
-                  <div className="text-[13px] font-medium">{s.name}</div>
-                  {s.command ? (
-                    <div className="font-mono text-[10px] text-muted-foreground">{s.command}</div>
-                  ) : null}
-                  {s.description ? (
-                    <div className="mt-0.5 text-[11px] text-muted-foreground/70 line-clamp-2">{s.description}</div>
-                  ) : null}
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+      {loading ? (
+        <p className="py-3 text-sm text-muted-foreground">{t('common:loading')}</p>
+      ) : displayRows.length === 0 ? (
+        <p className="py-3 text-sm text-muted-foreground">{t('settings:skills.empty')}</p>
+      ) : (
+        <ul className="divide-y divide-border/40">
+          {displayRows.map((s) => (
+            <li key={s.key} className="flex items-center justify-between gap-3 py-3">
+              <div className="min-w-0 flex-1">
+                <div className="text-base font-medium">{s.name}</div>
+                {s.command ? <div className="font-mono text-2xs text-muted-foreground">{s.command}</div> : null}
+                {s.description ? (
+                  <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground/70">{s.description}</div>
+                ) : null}
+              </div>
+              <Switch checked={s.enabled} onCheckedChange={() => toggle(s)} />
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   )
 }

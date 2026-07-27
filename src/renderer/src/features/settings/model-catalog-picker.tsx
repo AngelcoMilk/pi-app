@@ -31,7 +31,7 @@ export function ModelCatalogPicker({
 
   if (loading) {
     return (
-      <div className="settings-catalog-shell ui-enter overflow-hidden rounded-xl border border-border/50 bg-gradient-to-b from-muted/25 to-transparent px-4 py-8 text-center">
+      <div className="settings-catalog-shell ui-enter overflow-hidden rounded-lg border border-border/50 bg-gradient-to-b from-muted/25 to-transparent px-4 py-8 text-center">
         <div
           className="mx-auto h-7 w-7 rounded-full"
           style={{
@@ -41,14 +41,14 @@ export function ModelCatalogPicker({
             animation: 'skeleton-shimmer 1.2s ease-in-out infinite',
           }}
         />
-        <p className="mt-3 text-[12px] text-muted-foreground animate-thinking-pulse">{t('models.fetching')}</p>
+        <p className="animate-thinking-pulse mt-3 text-sm text-muted-foreground">{t('models.fetching')}</p>
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="ui-enter rounded-xl border border-destructive/25 bg-destructive/5 px-4 py-3 text-[12px] text-destructive">
+      <div className="ui-enter rounded-lg border border-destructive/25 bg-destructive/5 px-4 py-3 text-sm text-destructive">
         {error}
       </div>
     )
@@ -56,19 +56,19 @@ export function ModelCatalogPicker({
 
   if (!ids.length) {
     return (
-      <div className="ui-enter rounded-xl border border-dashed border-border/50 bg-muted/10 px-4 py-7 text-center text-[12px] text-muted-foreground">
+      <div className="ui-enter rounded-lg border border-dashed border-border/50 bg-muted/10 px-4 py-7 text-center text-sm text-muted-foreground">
         {t('models.fetchFirst')}
       </div>
     )
   }
 
   return (
-    <div className="settings-catalog-shell ui-enter overflow-hidden rounded-xl border border-border/55 bg-gradient-to-b from-muted/20 via-transparent to-transparent">
+    <div className="settings-catalog-shell ui-enter overflow-hidden rounded-lg border border-border/55 bg-gradient-to-b from-muted/20 via-transparent to-transparent">
       <div className="flex flex-wrap items-center gap-2 border-b border-border/40 px-3 py-2.5">
         <div className="relative min-w-[10rem] flex-1">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/45 transition-opacity duration-motion-fast" />
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground/50 transition-opacity duration-motion-fast" strokeWidth={2} />
           <input
-            className="settings-field-focus w-full rounded-lg border border-border/60 bg-background/80 py-1.5 pl-8 pr-2 text-[12px] transition-shadow duration-motion-fast"
+            className="settings-field-focus w-full rounded-lg border border-border/60 bg-background/80 py-1.5 pl-8 pr-2 text-sm transition-shadow duration-motion-fast"
             placeholder={t('models.searchPlaceholder')}
             value={q}
             onChange={(e) => setQ(e.target.value)}
@@ -81,14 +81,14 @@ export function ModelCatalogPicker({
             }}
           />
         </div>
-        <span className="text-[10px] tabular-nums text-muted-foreground transition-colors duration-motion-fast">
+        <span className="font-mono text-2xs text-muted-foreground transition-colors duration-motion-fast">
           {filtered.length}/{ids.length}
           {newCount > 0 && <span className="ml-1 text-primary">· {t('models.canAdd', { count: newCount })}</span>}
         </span>
         {onAddAllNew && newCount > 0 && (
           <button
             type="button"
-            className="settings-chip rounded-lg border border-primary/30 bg-primary/5 px-2.5 py-1 text-[11px] font-medium text-primary hover:bg-primary/10"
+            className="settings-chip rounded-lg border border-primary/30 bg-primary/5 px-2.5 py-1 text-xs font-medium text-primary hover:bg-primary/10"
             onClick={onAddAllNew}
           >
             {t('models.addAll')}
@@ -98,7 +98,7 @@ export function ModelCatalogPicker({
 
       <ul className="max-h-[min(280px,42vh)] overflow-y-auto p-2">
         {filtered.length === 0 ? (
-          <li className="py-6 text-center text-[12px] text-muted-foreground">{t('models.noMatchModel')}</li>
+          <li className="py-6 text-center text-sm text-muted-foreground">{t('models.noMatchModel')}</li>
         ) : (
           filtered.map((id, i) => {
             const added = localIds.has(id)
@@ -116,7 +116,7 @@ export function ModelCatalogPicker({
                 >
                   <span
                     className={cn(
-                      'min-w-0 flex-1 truncate font-mono text-[11px] transition-colors duration-motion-fast',
+                      'min-w-0 flex-1 truncate font-mono text-xs transition-colors duration-motion-fast',
                       added ? 'text-muted-foreground' : 'text-foreground/90',
                     )}
                     title={id}
@@ -124,8 +124,8 @@ export function ModelCatalogPicker({
                     {id}
                   </span>
                   {added ? (
-                    <span className="settings-added-badge flex shrink-0 items-center gap-1 rounded-full bg-muted/80 px-2 py-0.5 text-[10px] text-muted-foreground">
-                      <Check className="h-3 w-3 text-green-600 dark:text-green-400" />
+                    <span className="settings-added-badge flex shrink-0 items-center gap-1 rounded-full bg-muted/80 px-2 py-0.5 text-2xs text-muted-foreground">
+                      <Check className="h-3 w-3 text-green-600 dark:text-green-400" strokeWidth={2} />
                       {t('models.allAdded')}
                     </span>
                   ) : (
@@ -135,7 +135,7 @@ export function ModelCatalogPicker({
                       aria-label={t('models.addBtn') + ' ' + id}
                       onClick={() => onAdd(id)}
                     >
-                      <Plus className="h-4 w-4 transition-transform duration-motion-fast group-hover:rotate-90" strokeWidth={2.25} />
+                      <Plus className="h-4 w-4 transition-transform duration-motion-fast group-hover:rotate-90" strokeWidth={1.5} />
                     </button>
                   )}
                 </div>

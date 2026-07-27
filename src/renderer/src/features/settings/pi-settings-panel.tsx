@@ -8,11 +8,12 @@ import { useSettingsDirtySlice } from '@renderer/features/settings/use-settings-
 import { notifySettingsDirtyChanged } from '@renderer/features/settings/settings-dirty-registry'
 import {
   settingsEqual,
-  Section,
   type PiInfo,
   type PiSettingsSnapshot,
   type SdkStatus,
 } from './pi-settings-shared'
+import { SettingsSection } from './settings-page-shared'
+import { SettingsPageHeader } from './settings-shell'
 import { PiSettingsSdkSection } from './pi-settings-sdk-section'
 import { PiSettingsFormSections } from './pi-settings-form-sections'
 import { PiSettingsEnvAuthRows } from './pi-settings-env-auth-rows'
@@ -225,25 +226,20 @@ export function PiSettingsPanel() {
   }
 
   if (!ui && !loadError) {
-    return <p className="text-[13px] text-muted-foreground">{t('settings:pi.loading')}</p>
+    return <p className="text-base text-muted-foreground">{t('settings:pi.loading')}</p>
   }
 
   return (
-    <div className="space-y-1">
-      <div className="mb-4 flex items-start justify-between gap-3">
-        <div>
-          <h3 className="text-[15px] font-semibold">{t('settings:pi.title')}</h3>
-          <p className="mt-1 text-[11px] text-muted-foreground/70">{t('settings:pi.description')}</p>
-        </div>
-      </div>
+    <div className="space-y-8">
+      <SettingsPageHeader title={t('settings:pi.title')} description={t('settings:pi.description')} />
 
       {loadError && (
-        <div className="mb-3 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[12px] text-amber-800 dark:text-amber-200">
+        <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-200">
           {loadError} {t('settings:pi.loadErrorHint')}
         </div>
       )}
 
-      <Section title={t('settings:pi.sectionEnvAuth')}>
+      <SettingsSection title={t('settings:pi.sectionEnvAuth')}>
         <PiSettingsSdkSection
           info={info}
           sdkStatus={sdkStatus}
@@ -259,7 +255,7 @@ export function PiSettingsPanel() {
           onInstall={onInstall}
         />
         {ui && <PiSettingsEnvAuthRows info={info} ui={ui} />}
-      </Section>
+      </SettingsSection>
 
       {ui && (
         <PiSettingsFormSections
@@ -272,7 +268,7 @@ export function PiSettingsPanel() {
           queuePatch={queuePatch}
         />
       )}
-      <p className="pt-2 text-[10px] text-muted-foreground/55">{t('settings:pi.treeHint')}</p>
+      <p className="text-2xs text-muted-foreground/50">{t('settings:pi.treeHint')}</p>
     </div>
   )
 }

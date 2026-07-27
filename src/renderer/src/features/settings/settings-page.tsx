@@ -1,22 +1,19 @@
 import { useState, useEffect } from 'react'
-import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@renderer/lib/utils'
 import { ipcClient } from '@renderer/lib/ipc-client'
 import { useUIStore } from '@renderer/stores/ui-store'
-import { useSettingsDraft } from '@renderer/features/settings/settings-draft-context'
 import { ExtensionConfigSubpage } from '@renderer/features/extension-ui/extension-config-subpage'
 import { ModelsSettingsPanel } from '@renderer/features/settings/models-settings-panel'
-import { Settings as SettingsIcon, Palette, Cpu, Puzzle, Zap, MessageSquareText, Mic,
-  Layers, ChevronLeft, LayoutPanelLeft, Boxes, type LucideIcon
+import { SlidersHorizontal, Palette, Cpu, Puzzle, Zap, MessageSquareText, Mic,
+  Cable, ChevronLeft, LayoutPanelLeft, Boxes, type LucideIcon
 } from 'lucide-react'
 import { SkillsSettingsPanel } from '@renderer/features/settings/skills-settings-panel'
 import { PromptsSettingsPanel } from '@renderer/features/settings/prompts-settings-panel'
 import {
   SettingsMain,
   SettingsNav,
+  SettingsNavGroup,
   SettingsNavItem,
-  SettingsPageHeader,
 } from '@renderer/features/settings/settings-shell'
 import { RightPanelsSettings } from '@renderer/features/settings/right-panels-settings'
 import { VoiceSettingsPanel } from '@renderer/features/settings/voice-settings-panel'
@@ -29,25 +26,47 @@ import { AdaptersSettings } from '@renderer/features/settings/settings-adapters-
 
 type SettingsPage = 'general' | 'appearance' | 'rightPanels' | 'pi' | 'models' | 'skills' | 'prompts' | 'extensions' | 'adapters' | 'voice'
 
+type NavGroup = { key: string; labelKey: string; pages: { key: SettingsPage; icon: LucideIcon }[] }
+
+const NAV_GROUPS: NavGroup[] = [
+  {
+    key: 'app',
+    labelKey: 'settings:nav.groupApp',
+    pages: [
+      { key: 'general', icon: SlidersHorizontal },
+      { key: 'appearance', icon: Palette },
+      { key: 'rightPanels', icon: LayoutPanelLeft },
+    ],
+  },
+  {
+    key: 'agent',
+    labelKey: 'settings:nav.groupAgent',
+    pages: [
+      { key: 'pi', icon: Cpu },
+      { key: 'models', icon: Boxes },
+      { key: 'voice', icon: Mic },
+    ],
+  },
+  {
+    key: 'resources',
+    labelKey: 'settings:nav.groupResources',
+    pages: [
+      { key: 'skills', icon: Zap },
+      { key: 'prompts', icon: MessageSquareText },
+      { key: 'extensions', icon: Puzzle },
+      { key: 'adapters', icon: Cable },
+    ],
+  },
+]
+
+const WIDE_PAGES: SettingsPage[] = ['rightPanels', 'pi', 'models', 'skills', 'prompts', 'extensions', 'adapters', 'voice']
+
 export function SettingsPage() {
   const { t } = useTranslation()
   const [page, setPage] = useState<SettingsPage>('general')
   const [configExt, setConfigExt] = useState<string | null>(null)
   const pendingExtensionConfig = useUIStore((s) => s.pendingExtensionConfig)
   const requestExtensionConfig = useUIStore((s) => s.requestExtensionConfig)
-
-  const PAGES: { key: SettingsPage; icon: LucideIcon; label: string }[] = [
-    { key: 'general', icon: SettingsIcon, label: t('settings:nav.general') },
-    { key: 'appearance', icon: Palette, label: t('settings:nav.appearance') },
-    { key: 'rightPanels', icon: LayoutPanelLeft, label: t('settings:nav.rightPanels') },
-    { key: 'pi', icon: Cpu, label: t('settings:nav.pi') },
-    { key: 'models', icon: Boxes, label: t('settings:nav.models') },
-    { key: 'skills', icon: Zap, label: t('settings:nav.skills') },
-    { key: 'prompts', icon: MessageSquareText, label: t('settings:nav.prompts') },
-    { key: 'extensions', icon: Puzzle, label: t('settings:nav.extensions') },
-    { key: 'adapters', icon: Layers, label: t('settings:nav.adapters') },
-    { key: 'voice', icon: Mic, label: t('settings:nav.voice') },
-  ]
 
   // 外置 adapter.json 可能在设置外被修改；进入设置时刷新 Main 缓存与右栏目录
   useEffect(() => {
@@ -64,59 +83,64 @@ export function SettingsPage() {
     }
   }, [pendingExtensionConfig, requestExtensionConfig])
 
-  // Config detail subpage (replaces modal)
-  if (configExt) {
-    return (
-      <div className="flex h-full min-h-0 w-full flex-col overflow-hidden">
-        <div className="flex shrink-0 items-center gap-2 border-b border-border/60 px-4 py-2.5">
-          <button
-            type="button"
-            onClick={() => setConfigExt(null)}
-            className="electron-no-drag chrome-icon-btn flex items-center gap-1.5 rounded-md px-2 py-1 text-[12px] text-muted-foreground hover:bg-accent hover:text-foreground"
-          >
-            <ChevronLeft className="h-3.5 w-3.5" />
-            {t('settings:adapters.backToAdapters')}
-          </button>
-          <span className="text-[13px] font-medium">{t('settings:adapters.configTitle', { id: configExt })}</span>
-        </div>
-        <SettingsMain wide>
-          <div className="animate-in fade-in slide-in-from-right duration-motion-normal">
-            <ExtensionConfigSubpage extensionId={configExt} />
-          </div>
-        </SettingsMain>
-      </div>
-    )
-  }
-
-  const widePages: SettingsPage[] = ['rightPanels', 'pi', 'models', 'skills', 'prompts', 'extensions', 'adapters', 'voice']
-  const wide = widePages.includes(page)
+  const wide = WIDE_PAGES.includes(page)
 
   return (
     <SettingsDraftProvider>
       <div className="flex h-full min-h-0 w-full overflow-hidden">
         <SettingsNav title={t('settings:title')}>
-          {PAGES.map((p) => (
-            <SettingsNavItem
-              key={p.key}
-              active={page === p.key}
-              icon={p.icon}
-              label={p.label}
-              onClick={() => setPage(p.key)}
-            />
+          {NAV_GROUPS.map((group) => (
+            <SettingsNavGroup key={group.key} label={t(group.labelKey)}>
+              {group.pages.map((p) => (
+                <SettingsNavItem
+                  key={p.key}
+                  active={page === p.key}
+                  icon={p.icon}
+                  label={t(`settings:nav.${p.key}`)}
+                  onClick={() => {
+                    setConfigExt(null)
+                    setPage(p.key)
+                  }}
+                />
+              ))}
+            </SettingsNavGroup>
           ))}
         </SettingsNav>
-        <SettingsMain wide={wide} footer={<SettingsSaveBar />}>
-          {page === 'general' && <GeneralSettings />}
-          {page === 'appearance' && <AppearanceSettings />}
-          {page === 'rightPanels' && <RightPanelsSettings />}
-          {page === 'pi' && <PiSettings />}
-          {page === 'models' && <ModelsSettingsPanel />}
-          {page === 'skills' && <SkillsSettingsPanel />}
-          {page === 'prompts' && <PromptsSettingsPanel />}
-          {page === 'extensions' && <ExtensionsSettings />}
-          {page === 'adapters' && <AdaptersSettings />}
-          {page === 'voice' && <VoiceSettingsPanel />}
-        </SettingsMain>
+
+        {configExt ? (
+          // 适配器配置子页：仍不进草稿、不挂保存栏，仅在主区替换内容
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+            <div className="flex shrink-0 items-center gap-2 border-b border-border/60 bg-[var(--bg-base)] px-4 py-2.5">
+              <button
+                type="button"
+                onClick={() => setConfigExt(null)}
+                className="electron-no-drag chrome-icon-btn flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
+              >
+                <ChevronLeft className="h-3 w-3" strokeWidth={2} />
+                {t('settings:adapters.backToAdapters')}
+              </button>
+              <span className="text-base font-medium">{t('settings:adapters.configTitle', { id: configExt })}</span>
+            </div>
+            <SettingsMain wide>
+              <div className="animate-in fade-in slide-in-from-right duration-motion-normal">
+                <ExtensionConfigSubpage extensionId={configExt} />
+              </div>
+            </SettingsMain>
+          </div>
+        ) : (
+          <SettingsMain wide={wide} footer={<SettingsSaveBar wide={wide} />}>
+            {page === 'general' && <GeneralSettings />}
+            {page === 'appearance' && <AppearanceSettings />}
+            {page === 'rightPanels' && <RightPanelsSettings />}
+            {page === 'pi' && <PiSettings />}
+            {page === 'models' && <ModelsSettingsPanel />}
+            {page === 'skills' && <SkillsSettingsPanel />}
+            {page === 'prompts' && <PromptsSettingsPanel />}
+            {page === 'extensions' && <ExtensionsSettings />}
+            {page === 'adapters' && <AdaptersSettings />}
+            {page === 'voice' && <VoiceSettingsPanel />}
+          </SettingsMain>
+        )}
       </div>
     </SettingsDraftProvider>
   )

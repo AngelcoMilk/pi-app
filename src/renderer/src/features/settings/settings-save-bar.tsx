@@ -2,7 +2,7 @@ import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@renderer/lib/utils'
 import { useSettingsDraft } from '@renderer/features/settings/settings-draft-context'
-export function SettingsSaveBar() {
+export function SettingsSaveBar({ wide = false }: { wide?: boolean }) {
   const { t } = useTranslation()
   const { dirty, dirtySliceLabels, saving, discard, save } = useSettingsDraft()
 
@@ -23,13 +23,13 @@ export function SettingsSaveBar() {
         dirty && 'shadow-[0_-4px_24px_-8px_rgba(0,0,0,0.12)]',
       )}
     >
-      <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-3">
-        <div className="min-w-0 text-[12px] text-muted-foreground">
+      <div className={cn('flex flex-wrap items-center justify-between gap-3', wide ? 'w-full' : 'mx-auto max-w-3xl')}>
+        <div className="min-w-0 text-sm text-muted-foreground">
           {dirty ? (
             <>
               <span className="text-amber-700 dark:text-amber-400">{t('common:unsavedChanges')}</span>
               {dirtySliceLabels.length > 0 && (
-                <span className="mt-0.5 block truncate text-[10px] text-muted-foreground/70">
+                <span className="mt-0.5 block truncate text-2xs text-muted-foreground/70">
                   {dirtySliceLabels.join(' · ')}
                 </span>
               )}
@@ -43,7 +43,7 @@ export function SettingsSaveBar() {
             type="button"
             disabled={!dirty || saving}
             onClick={() => void discard().then(() => toast.message(t('common:reverted')))}
-            className="rounded-md border border-border/50 px-3 py-2 text-[12px] text-muted-foreground hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-35"
+            className="rounded-md border border-border/50 px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-35"
           >
             {t('common:discard')}
           </button>
@@ -52,7 +52,7 @@ export function SettingsSaveBar() {
             disabled={!dirty || saving}
             onClick={() => void onSave()}
             className={cn(
-              'rounded-md px-4 py-2 text-[12px] font-medium transition-all duration-motion-fast',
+              'rounded-md px-4 py-2 text-sm font-medium transition-all duration-motion-fast',
               dirty
                 ? 'bg-primary text-primary-foreground shadow-sm hover:opacity-90'
                 : 'bg-muted text-muted-foreground',

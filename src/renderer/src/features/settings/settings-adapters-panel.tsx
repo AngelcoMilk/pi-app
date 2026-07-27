@@ -6,6 +6,7 @@ import { useUIStore } from '@renderer/stores/ui-store'
 import { resolveAdapterText } from '@extension-compat/adapter-schema'
 import i18n from '@renderer/lib/i18n'
 import { SettingsPageHeader } from '@renderer/features/settings/settings-shell'
+import { btnOutline } from '@renderer/features/settings/settings-controls'
 
 const TIER_STYLES: Record<string, string> = {
   native: 'bg-green-500/10 text-green-700 dark:text-green-400',
@@ -56,18 +57,18 @@ export function AdaptersSettings() {
   }, [])
 
   if (adapters === null) {
-    return <div className="text-[12px] text-muted-foreground/50 py-4">{t('settings:adapters.loading')}</div>
+    return <div className="py-4 text-sm text-muted-foreground/70">{t('settings:adapters.loading')}</div>
   }
 
   return (
-    <div className="w-full space-y-3">
+    <div className="w-full">
       <SettingsPageHeader
         title={t('settings:adapters.title')}
         description={t('settings:adapters.description')}
       />
-      {error && <div className="text-[11px] text-destructive">{error}</div>}
+      {error && <div className="mb-3 text-xs text-destructive">{error}</div>}
       {adapters.length === 0 ? (
-        <div className="text-[12px] text-muted-foreground/50 py-4">
+        <div className="py-4 text-sm text-muted-foreground/70">
           {t('settings:adapters.empty')}
         </div>
       ) : (
@@ -77,29 +78,29 @@ export function AdaptersSettings() {
             return (
             <div key={a.pluginId} className="rounded-lg border border-border/60 bg-card/40 p-4">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[14px] font-medium">{resolved?.displayName || a.displayName}</span>
-                <span className={cn('rounded px-1.5 py-0.5 text-[9px] font-bold uppercase', TIER_STYLES[a.tier ?? ''])}>
+                <span className="text-lg font-medium">{resolved?.displayName || a.displayName}</span>
+                <span className={cn('rounded px-1.5 py-0.5 text-2xs font-semibold uppercase tracking-wider', TIER_STYLES[a.tier ?? ''])}>
                   {TIER_LABELS[a.tier ?? ''] || a.tier}
                 </span>
-                <span className="text-[10px] text-muted-foreground">{a.source}</span>
-                {a.version && <span className="text-[10px] font-mono text-muted-foreground">v{a.version}</span>}
+                <span className="text-2xs text-muted-foreground">{a.source}</span>
+                {a.version && <span className="font-mono text-2xs text-muted-foreground">v{a.version}</span>}
                 {a.adapterVersion && (
-                  <span className="text-[10px] text-muted-foreground">{t('settings:adapters.tierPartial')} v{a.adapterVersion}</span>
+                  <span className="text-2xs text-muted-foreground">{t('settings:adapters.tierPartial')} v{a.adapterVersion}</span>
                 )}
               </div>
-              {(resolved?.description || a.description) && <p className="mt-1 text-[12px] text-muted-foreground/80">{resolved?.description || a.description}</p>}
-              <div className="mt-2 text-[11px] text-muted-foreground">
+              {(resolved?.description || a.description) && <p className="mt-1 text-sm text-muted-foreground/70">{resolved?.description || a.description}</p>}
+              <div className="mt-2 text-xs text-muted-foreground">
                 <span className="font-medium text-foreground/80">{t('settings:adapters.desktop')}</span>
                 {resolved?.description || a.desktopSupport}
               </div>
-              <div className="mt-2 text-[10px] text-muted-foreground/60 font-mono">
+              <div className="mt-2 font-mono text-2xs text-muted-foreground/50">
                 probe: {a.matchMeta?.probeId}
                 {a.matchMeta?.npmPackage ? ` · npm: ${a.matchMeta.npmPackage}` : ''}
               </div>
               {(a.registeredTools?.length ?? 0) > 0 && (
                 <div className="mt-2 flex flex-wrap gap-1">
                   {(a.registeredTools ?? []).map((t: string) => (
-                    <span key={t} className="rounded bg-muted/70 px-1.5 py-0.5 font-mono text-[10px]">{t}</span>
+                    <span key={t} className="rounded bg-muted/70 px-1.5 py-0.5 font-mono text-2xs">{t}</span>
                   ))}
                 </div>
               )}
@@ -107,7 +108,7 @@ export function AdaptersSettings() {
                 <div className="mt-3 flex justify-end">
                   <button
                     onClick={() => requestExtensionConfig(a.id)}
-                    className="rounded-md border border-border bg-background px-3 py-1.5 text-[12px] font-medium hover:bg-accent"
+                    className={btnOutline}
                   >
                     {t('settings:adapters.openConfig')}
                   </button>
