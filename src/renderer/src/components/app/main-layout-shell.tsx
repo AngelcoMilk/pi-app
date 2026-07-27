@@ -114,7 +114,7 @@ export function MainLayoutShell({
 
       <div
         className={cn(
-          'shell-track-center min-w-0 overflow-hidden',
+          'shell-track-center min-w-0',
           filesChatPreview && 'pointer-events-none',
         )}
         style={filesChatPreview ? { visibility: 'hidden' as const } : undefined}

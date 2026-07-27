@@ -304,18 +304,6 @@ export function Composer() {
       onDragOver={attachmentHandlers.handleDragOver}
       onDrop={attachmentHandlers.handleDrop}
     >
-      <div
-        className={cn(
-          'composer-drop-overlay pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-xl border border-dashed border-brand/35 bg-brand/[0.06] backdrop-blur-[2px]',
-          isDragActive && 'is-active',
-        )}
-        aria-hidden
-      >
-        <div className="flex flex-col items-center gap-1.5 text-primary/75">
-          <Upload className="h-5 w-5 transition-transform duration-[var(--motion-normal)] ease-[var(--motion-ease)]" />
-          <span className="text-[12px] font-medium">{t('composer:dropOverlay')}</span>
-        </div>
-      </div>
       <ComposerFilePopover
         show={fileSearch.show}
         loading={fileSearch.loading}
@@ -353,7 +341,7 @@ export function Composer() {
       <div
         ref={slashPopoverAnchorRef}
         className={cn(
-          'composer-shell flex flex-col rounded-xl border',
+          'composer-shell relative flex flex-col border',
           sessionPreview && 'opacity-90',
           composerFocused && 'composer-shell-focused',
           isDragActive && 'border-dashed !border-primary/50',
@@ -361,6 +349,18 @@ export function Composer() {
           voiceState === 'transcribing' && 'composer-shell--voice-transcribing',
         )}
       >
+        <div
+          className={cn(
+            'composer-drop-overlay pointer-events-none absolute inset-0 z-20 flex items-center justify-center border border-dashed border-brand/35 bg-brand/[0.06] backdrop-blur-[2px]',
+            isDragActive && 'is-active',
+          )}
+          aria-hidden
+        >
+          <div className="flex flex-col items-center gap-1.5 text-primary/75">
+            <Upload className="h-5 w-5 transition-transform duration-[var(--motion-normal)] ease-[var(--motion-ease)]" />
+            <span className="text-[12px] font-medium">{t('composer:dropOverlay')}</span>
+          </div>
+        </div>
         {attachments.length > 0 && (
           <div className="composer-attachments-strip flex flex-wrap gap-1.5 border-b border-border/25 px-3.5 pb-2.5 pt-2.5">
             {attachments.map((a, index) => (

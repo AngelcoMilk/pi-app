@@ -62,6 +62,43 @@
     --focus-border: #e1e0ff;
     --focus-shadow: 0 2px 20px rgba(225, 224, 255, 0.6);
 
+    /* Main paper surface + Composer shell curves */
+    --main-chat-surface-radius: 16px;
+    --main-chat-surface-shadow:
+      -3px 0 8px -4px rgba(18, 24, 40, 0.14),
+      0 -2px 6px -3px rgba(18, 24, 40, 0.1);
+    --composer-shell-radius: 20px;
+    --composer-shell-border: color-mix(in srgb, var(--border-base) 82%, #aeb4bf);
+    --composer-shell-border-hover: color-mix(in srgb, var(--brand) 20%, #c4c8d0);
+    --composer-shell-border-focus: color-mix(in srgb, var(--brand) 46%, #8b91a0);
+    --composer-shell-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.9),
+      0 1px 2px rgba(18, 24, 40, 0.09),
+      0 10px 28px rgba(18, 24, 40, 0.1);
+    --composer-shell-shadow-hover:
+      inset 0 1px 0 rgba(255, 255, 255, 0.94),
+      0 2px 4px rgba(18, 24, 40, 0.1),
+      0 12px 30px rgba(18, 24, 40, 0.12);
+    --composer-shell-shadow-focus:
+      0 0 0 1px color-mix(in srgb, var(--brand) 34%, transparent),
+      inset 0 1px 0 rgba(255, 255, 255, 0.96),
+      0 1px 2px rgba(18, 24, 40, 0.1),
+      0 14px 34px rgba(18, 24, 40, 0.14);
+    --composer-shell-shadow-recording:
+      0 0 0 1px color-mix(in srgb, var(--brand) 16%, transparent),
+      inset 0 1px 0 rgba(255, 255, 255, 0.96),
+      0 1px 2px rgba(18, 24, 40, 0.1),
+      0 14px 34px rgba(18, 24, 40, 0.14);
+    --composer-shell-shadow-hero:
+      inset 0 1px 0 rgba(255, 255, 255, 0.94),
+      0 2px 5px rgba(18, 24, 40, 0.1),
+      0 18px 44px rgba(18, 24, 40, 0.14);
+    --composer-shell-shadow-hero-focus:
+      0 0 0 1px color-mix(in srgb, var(--brand) 34%, transparent),
+      inset 0 1px 0 rgba(255, 255, 255, 0.96),
+      0 2px 6px rgba(18, 24, 40, 0.11),
+      0 20px 48px rgba(18, 24, 40, 0.16);
+
     /* 输入框/对话：随中心列可用宽度伸缩，侧栏收起后自然扩展 */
     --chat-content-min: 560px;
     --chat-content-ratio: 72%;
@@ -178,6 +215,40 @@
     --focus-border: #3794ff;
     --focus-shadow: 0 0 0 1px #3794ff55, 0 2px 12px rgba(0, 0, 0, 0.35);
 
+    --main-chat-surface-shadow:
+      -3px 0 8px -4px rgba(0, 0, 0, 0.28),
+      0 -2px 6px -3px rgba(0, 0, 0, 0.2);
+    --composer-shell-border: #3a3a3a;
+    --composer-shell-border-hover: #46464a;
+    --composer-shell-border-focus: color-mix(in srgb, var(--brand) 42%, #6a6a70);
+    --composer-shell-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.055),
+      0 1px 2px rgba(0, 0, 0, 0.44),
+      0 10px 28px rgba(0, 0, 0, 0.22);
+    --composer-shell-shadow-hover:
+      inset 0 1px 0 rgba(255, 255, 255, 0.07),
+      0 2px 4px rgba(0, 0, 0, 0.48),
+      0 12px 30px rgba(0, 0, 0, 0.26);
+    --composer-shell-shadow-focus:
+      0 0 0 1px color-mix(in srgb, var(--brand) 38%, transparent),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      0 1px 2px rgba(0, 0, 0, 0.5),
+      0 14px 34px rgba(0, 0, 0, 0.3);
+    --composer-shell-shadow-recording:
+      0 0 0 1px color-mix(in srgb, var(--brand) 16%, transparent),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      0 1px 2px rgba(0, 0, 0, 0.5),
+      0 14px 34px rgba(0, 0, 0, 0.3);
+    --composer-shell-shadow-hero:
+      inset 0 1px 0 rgba(255, 255, 255, 0.07),
+      0 2px 5px rgba(0, 0, 0, 0.5),
+      0 18px 44px rgba(0, 0, 0, 0.32);
+    --composer-shell-shadow-hero-focus:
+      0 0 0 1px color-mix(in srgb, var(--brand) 38%, transparent),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      0 2px 6px rgba(0, 0, 0, 0.52),
+      0 20px 48px rgba(0, 0, 0, 0.36);
+
     /* Tailwind HSL — neutral gray, low chroma (match VS Code) */
     --background: 0 0% 12%;           /* #1f1f1f */
     --foreground: 0 0% 80%;           /* #cccccc */
@@ -289,10 +360,13 @@
   }
   /* 三栏 Grid 收起：只过渡 grid-template-columns，中间 1fr 由引擎插值，减轻 Timeline 掉帧 */
   .shell-three-col {
+    position: relative;
+    z-index: 30;
     display: grid;
     width: 100%;
     min-height: 0;
-    overflow: hidden;
+    /* Keep outer paper shadow visible onto the top chrome / sidebar. */
+    overflow: visible;
     transition: grid-template-columns 360ms cubic-bezier(0.22, 1, 0.36, 1);
     contain: layout style;
   }
@@ -305,15 +379,17 @@
     contain: layout paint;
     min-height: 0;
   }
-  /* 左栏与对话区 grid 贴齐；圆角处由 center 的 #F3F3F3 衬底，不额外留灰条 */
+  /* 左栏与对话区 grid 贴齐；主纸面左上角露出 center 的侧栏衬底 */
   .shell-track-left {
     box-shadow: none;
   }
   .shell-track-center {
     position: relative;
+    z-index: 40;
     min-height: 0;
     contain: layout;
     padding: 0;
+    overflow: visible;
     background: var(--surface-sidebar);
   }
   /* 聊天列与右栏分界：画在 center 列右缘（grid 接缝），避免被卡片 overflow 吃掉 */
@@ -332,12 +408,14 @@
     display: none;
   }
   .shell-track-center .main-chat-column {
-    /* Paper Agent: flat paper sheet — no nested card chrome */
-    border-radius: 0;
+    /* Codex-like paper surface: cast onto sidebar/top chrome, keep right/bottom continuous */
+    position: relative;
+    z-index: 1;
+    border-radius: var(--main-chat-surface-radius) 0 0 0;
     background: var(--bg-base);
     overflow: hidden;
     height: 100%;
-    box-shadow: none;
+    box-shadow: var(--main-chat-surface-shadow);
   }
   .shell-track-right {
     position: relative;
@@ -658,21 +736,28 @@
     white-space: pre;
   }
   .composer-shell {
+    border-radius: var(--composer-shell-radius);
     background: var(--bg-base);
-    border-color: var(--border-base);
+    border-color: var(--composer-shell-border);
+    box-shadow: var(--composer-shell-shadow);
     transition:
       border-color var(--motion-normal) var(--motion-ease),
       box-shadow var(--motion-normal) var(--motion-ease),
       background-color var(--motion-fast) ease,
       transform var(--motion-fast) ease;
   }
+  .composer-drop-overlay {
+    overflow: hidden;
+    border-radius: var(--composer-shell-radius);
+  }
   .composer-shell:hover:not(.composer-shell-focused) {
-    border-color: color-mix(in srgb, var(--brand) 28%, var(--border-base));
+    border-color: var(--composer-shell-border-hover);
+    box-shadow: var(--composer-shell-shadow-hover);
     background: color-mix(in srgb, var(--bg-1) 70%, var(--bg-base));
   }
   .composer-shell-focused {
-    border-color: var(--focus-border) !important;
-    box-shadow: var(--focus-shadow);
+    border-color: var(--composer-shell-border-focus) !important;
+    box-shadow: var(--composer-shell-shadow-focus);
     background: var(--bg-base);
   }
   .composer-shell-upper:empty {
@@ -985,14 +1070,15 @@
 
   /* Composer voice — ChatGPT / Codex dictation 克制态 */
   .composer-shell--voice-recording {
-    border-color: color-mix(in srgb, var(--brand) 38%, var(--border-base));
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--brand) 14%, transparent);
+    border-color: color-mix(in srgb, var(--brand) 38%, var(--composer-shell-border));
+    box-shadow: var(--composer-shell-shadow-recording);
     transition:
       border-color var(--motion-normal) var(--motion-ease),
       box-shadow var(--motion-normal) var(--motion-ease);
   }
   .composer-shell--voice-transcribing {
-    border-color: color-mix(in srgb, var(--brand) 22%, var(--border-base));
+    border-color: color-mix(in srgb, var(--brand) 22%, var(--composer-shell-border));
+    box-shadow: var(--composer-shell-shadow);
     transition: border-color var(--motion-normal) var(--motion-ease);
   }
   .composer-voice-mic-wrap.is-recording .composer-voice-mic-btn {
@@ -1173,23 +1259,12 @@
    * pane edges = flat #2B2B2B, no bright hairlines; hover = neutral lift only.
    */
   .dark .shell-track-center .main-chat-column {
-    box-shadow: 0 0 0 1px var(--border-base);
+    box-shadow: var(--main-chat-surface-shadow);
   }
   .dark .shell-track-center::after,
   .dark .shell-files-chat-preview .shell-track-right:not(.shell-track-collapsed)::before {
     background: var(--border-base);
     opacity: 1;
-  }
-  .dark .composer-shell {
-    background: var(--bg-base);
-    border-color: var(--border-base);
-  }
-  .dark .composer-shell:hover:not(.composer-shell-focused) {
-    border-color: #3c3c3c;
-    background: var(--bg-1);
-  }
-  .dark .composer-shell-focused {
-    background: var(--bg-base);
   }
   .dark .nav-row-active {
     background-color: var(--bg-active) !important;
@@ -1955,8 +2030,8 @@
   transition: max-width var(--motion-slow) var(--motion-ease);
 }
 .composer-dock-hero .composer-shell {
-  border-color: var(--border-base);
-  box-shadow: 0 8px 40px -12px rgba(0,0,0,0.18), 0 2px 8px -4px rgba(0,0,0,0.08);
+  border-color: var(--composer-shell-border);
+  box-shadow: var(--composer-shell-shadow-hero);
   transition:
     border-color var(--motion-slow) var(--motion-ease),
     box-shadow var(--motion-slow) var(--motion-ease),
@@ -1964,8 +2039,8 @@
     transform var(--motion-slow) var(--motion-ease);
 }
 .composer-dock-hero .composer-shell-focused {
-  border-color: color-mix(in srgb, var(--brand) 40%, var(--border-base));
-  box-shadow: 0 8px 48px -10px rgba(0,0,0,0.22), 0 0 0 3px color-mix(in srgb, var(--brand) 12%, transparent);
+  border-color: var(--composer-shell-border-focus);
+  box-shadow: var(--composer-shell-shadow-hero-focus);
 }
 
 /* Project Home view 淡入/淡出 */
