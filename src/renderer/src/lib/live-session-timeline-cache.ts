@@ -485,6 +485,30 @@ export function applyBackgroundAppEventToLiveTimeline(sessionFile: string, event
   trimBackgroundLiveItems(snap)
 }
 
+/**
+ * Visible-route turn terminal: retire stale streaming markers so later switch-backs
+ * trust disk instead of resurrecting a mid-stream snapshot (running badge / steer swallow).
+ */
+export function markLiveSessionTurnEnded(
+  sessionFile: string,
+  status: 'idle' | 'failed',
+): void {
+  const key = cacheKey(sessionFile)
+  const snap = liveTimelines.get(key)
+  if (!snap) return
+  flushBackgroundLiveDeltasSync(key)
+  snap.streamingAssistantId = null
+  snap.agentTurnBootstrapping = false
+  snap.optimisticPendingUserText = null
+  snap.runState = {
+    ...snap.runState,
+    status,
+    activeRunId: undefined,
+    activeTool: undefined,
+    activeToolStatus: undefined,
+  }
+}
+
 export function isLiveSessionRunning(sessionFile: string | undefined | null): boolean {
   if (!sessionFile) return false
   const snap = liveTimelines.get(cacheKey(sessionFile))

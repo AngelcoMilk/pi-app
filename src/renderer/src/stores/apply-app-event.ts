@@ -11,6 +11,7 @@ import {
   handleTool,
 } from '@renderer/stores/apply-app-event-handlers'
 import { applyBackgroundAppEvent, eventSessionFile } from '@renderer/stores/apply-app-event-background'
+import { markLiveSessionTurnEnded } from '@renderer/lib/live-session-timeline-cache'
 import type { StoreApi } from '@renderer/stores/apply-app-event-types'
 
 export type { StoreApi } from '@renderer/stores/apply-app-event-types'
@@ -49,9 +50,11 @@ export function applyAppEvent(event: AppEvent, api: StoreApi): void {
       } else if (sessionKey && event.phase === 'idle') {
         if (api.get().runState.status === 'idle') {
           useUIStore.getState().setSessionRuntimeRunning(sessionKey, false)
+          markLiveSessionTurnEnded(sessionKey, 'idle')
         }
       } else if (sessionKey && (event.phase === 'failed' || event.phase === 'cancelled')) {
         useUIStore.getState().setSessionRuntimeRunning(sessionKey, false)
+        markLiveSessionTurnEnded(sessionKey, event.phase === 'failed' ? 'failed' : 'idle')
       }
       break
     }
@@ -68,8 +71,13 @@ export function applyAppEvent(event: AppEvent, api: StoreApi): void {
       }
       state.setPendingQueue(event.steering, event.followUp)
       break
-    case 'agent_error':
+    case 'agent_error': {
       handleAgentError(event, api)
+      const sessionKey = eventSessionFile(event) || api.get().historySessionFile
+      if (sessionKey) {
+        markLiveSessionTurnEnded(sessionKey, event.kind === 'aborted' ? 'idle' : 'failed')
+      }
       break
+    }
   }
 }
