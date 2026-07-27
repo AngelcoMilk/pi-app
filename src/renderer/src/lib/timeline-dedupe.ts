@@ -36,3 +36,15 @@ export function sanitizeHistoryTimeline(items: TimelineItem[]): TimelineItem[] {
     dedupeAdjacentUserMessages(stripOptimisticTimelineItems(items)),
   ) as TimelineItem[]
 }
+
+/**
+ * 合并链路清洗：保留尚未落盘的乐观行（磁盘落后于发送时，刚发的消息只存在于 opt 行）。
+ * 仅去掉空的乐观助手占位，避免其被误标为 interrupted。
+ */
+export function sanitizeLiveMergeTimeline(items: TimelineItem[]): TimelineItem[] {
+  const kept = items.filter(
+    (i) =>
+      !String(i.id).startsWith('opt-asst-') || !!i.text?.trim() || !!i.thinkingText?.trim(),
+  )
+  return markTrailingIncompleteAssistants(dedupeAdjacentUserMessages(kept)) as TimelineItem[]
+}

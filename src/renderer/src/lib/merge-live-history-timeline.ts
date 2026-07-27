@@ -1,7 +1,7 @@
 import {
   dedupeAdjacentUserMessages,
   normalizeTimelineMessageText,
-  sanitizeHistoryTimeline,
+  sanitizeLiveMergeTimeline,
 } from '@renderer/lib/timeline-dedupe'
 import {
   assistantItemsShareTurn,
@@ -101,8 +101,8 @@ export function mergeLiveTimelineWithHistoryTail(
   liveItems: TimelineItem[],
   persistedEntryOverlap: string[] = [],
 ): TimelineItem[] {
-  const hist = sanitizeHistoryTimeline(historyItems)
-  const live = sanitizeHistoryTimeline(liveItems)
+  const hist = sanitizeLiveMergeTimeline(historyItems)
+  const live = sanitizeLiveMergeTimeline(liveItems)
   if (live.length === 0) return hist
   if (hist.length === 0) return live
 
