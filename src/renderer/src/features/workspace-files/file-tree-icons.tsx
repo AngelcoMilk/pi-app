@@ -10,8 +10,8 @@ import {
   Folder,
   Music,
   Video,
-  type LucideIcon,
-} from 'lucide-react'
+  type AppIconComponent,
+} from '@renderer/components/icons'
 import { extOfPath } from './file-preview-mode'
 
 const CODE_EXT = new Set([
@@ -19,7 +19,7 @@ const CODE_EXT = new Set([
   'php', 'swift', 'kt', 'sh', 'yaml', 'yml', 'toml', 'xml', 'css', 'scss', 'vue', 'svelte', 'sql', 'lua', 'dart', 'gradle',
 ])
 
-export function fileTreeIcon(name: string, isDirectory: boolean): { Icon: LucideIcon; className: string } {
+export function fileTreeIcon(name: string, isDirectory: boolean): { Icon: AppIconComponent; className: string } {
   if (isDirectory) {
     return { Icon: Folder, className: 'text-amber-600/90 dark:text-amber-500/90' }
   }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Loader2, X } from 'lucide-react'
+import { Loader2, X } from '@renderer/components/icons'
 import { toast } from 'sonner'
 import { cn } from '@renderer/lib/utils'
 import { forkSessionFromEntry, loadForkCandidates } from '@renderer/lib/session-fork'

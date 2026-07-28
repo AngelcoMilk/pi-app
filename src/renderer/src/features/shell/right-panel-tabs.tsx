@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState, type ComponentType, type WheelEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type WheelEvent } from 'react'
+import type { AppIconComponent } from '@renderer/components/icons'
 import { cn } from '@renderer/lib/utils'
 
 
@@ -7,7 +8,7 @@ export function RightPanelTabs({
   activePanel,
   setActivePanel,
 }: {
-  panels: { key: string; label: string; icon: ComponentType<{ className?: string }> }[]
+  panels: { key: string; label: string; icon: AppIconComponent }[]
   activePanel: string
   setActivePanel: (p: string) => void
 }) {

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
-import { ArrowDown, ArrowUp, CornerDownLeft, File, Folder } from 'lucide-react'
+import { ArrowDown, ArrowUp, CornerDownLeft, File, Folder } from '@renderer/components/icons'
 import type { WorkspaceFsSearchEntry } from '@shared/ipc-contract'
 import { OverlayScrollHost } from '@renderer/components/ui/overlay-scrollbar'
 import { cn } from '@renderer/lib/utils'

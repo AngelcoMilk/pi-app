@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { ChevronLeft, Zap, Circle, FolderOpen, Plus, MessageSquare, Settings, Activity, GitBranch, ListTree, CircleDot, PanelLeft, PanelRight } from 'lucide-react'
+import { ChevronLeft, Zap, Circle, FolderOpen, Plus, MessageSquare, Settings, Activity, GitBranch, ListTree, CircleDot, PanelLeft, PanelRight } from '@renderer/components/icons'
 import { cn } from '@renderer/lib/utils'
 import { useUIStore } from '@renderer/stores/ui-store'
 import { isMac, MAC_TRAFFIC_LIGHTS_SPACER_CLASS } from '@renderer/lib/platform'

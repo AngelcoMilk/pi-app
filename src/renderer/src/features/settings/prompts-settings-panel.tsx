@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
-import { RefreshCw, MessageSquareText, FolderGit2, Cpu, Plug, FileText } from 'lucide-react'
+import { RefreshCw, MessageSquareText, FolderGit2, Cpu, Plug, FileText } from '@renderer/components/icons'
 import { cn } from '@renderer/lib/utils'
 import { ipcClient } from '@renderer/lib/ipc-client'
 import { MarkdownResourceEditor } from '@renderer/features/settings/markdown-resource-editor'

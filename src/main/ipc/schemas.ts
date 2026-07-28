@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { normalizeFontName } from '@shared/custom-theme'
+import { ICON_THEMES } from '@shared/icon-theme'
 
 export const shellOpenPathSchema = z.object({
   path: z.string(),
@@ -141,6 +142,7 @@ const themeVariantSchema = z
 
 const settingsValueSchemas: Record<string, z.ZodTypeAny> = {
   theme: z.enum(['light', 'dark', 'system']),
+  iconTheme: z.enum(ICON_THEMES),
   customTheme: z
     .object({ light: themeVariantSchema.optional(), dark: themeVariantSchema.optional() })
     .strict()

@@ -1,4 +1,4 @@
-import { ArrowRight, ChevronRight, Plus, Trash2 } from 'lucide-react'
+import { ArrowRight, ChevronRight, Plus, Trash2 } from '@renderer/components/icons'
 import { useTranslation } from 'react-i18next'
 import { inputCls as settingsInputCls } from '@renderer/features/settings/settings-controls'
 import { cn } from '@renderer/lib/utils'

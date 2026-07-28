@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
-import { History, Eye, FileCode } from 'lucide-react'
+import { History, Eye, FileCode } from '@renderer/components/icons'
 import { cn } from '@renderer/lib/utils'
 import { ipcClient } from '@renderer/lib/ipc-client'
 import MarkdownView from '@renderer/features/timeline/markdown-view'

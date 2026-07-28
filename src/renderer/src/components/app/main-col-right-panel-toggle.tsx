@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { PanelRight, RefreshCw } from 'lucide-react'
+import { PanelRight, RefreshCw } from '@renderer/components/icons'
 import { cn } from '@renderer/lib/utils'
 import { useUIStore } from '@renderer/stores/ui-store'
 import { reloadCurrentSessionData } from '@renderer/lib/reload-current-session-data'

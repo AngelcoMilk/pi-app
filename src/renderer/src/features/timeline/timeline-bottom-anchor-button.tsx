@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type MutableRefObject, type RefObject } from 'react'
-import { ChevronDown } from 'lucide-react'
+import { ChevronDown } from '@renderer/components/icons'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@renderer/lib/utils'
 import { isTimelineNearBottom } from './timeline-follow-scroll'

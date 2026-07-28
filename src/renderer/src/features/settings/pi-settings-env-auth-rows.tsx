@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Check, AlertCircle } from 'lucide-react'
+import { Check, AlertCircle } from '@renderer/components/icons'
 import { SettingRow } from './settings-page-shared'
 import { type PiInfo, type PiSettingsSnapshot } from './pi-settings-shared'
 

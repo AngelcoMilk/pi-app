@@ -1,7 +1,7 @@
 import { useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
-import { FolderOpen, ListX } from 'lucide-react'
+import { FolderOpen, ListX } from '@renderer/components/icons'
 import { ipcClient } from '@renderer/lib/ipc-client'
 import { useUIStore } from '@renderer/stores/ui-store'
 import { activateWorkspace } from '@renderer/lib/activate-workspace'

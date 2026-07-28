@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ipcClient } from '@renderer/lib/ipc-client'
 import { useUIStore } from '@renderer/stores/ui-store'
-import { RefreshCw, ChevronDown, ChevronRight, Layers, MessageSquare } from 'lucide-react'
+import { RefreshCw, ChevronDown, ChevronRight, Layers, MessageSquare } from '@renderer/components/icons'
 import { cn } from '@renderer/lib/utils'
 import { formatTokens, estTokensFromChars } from '@renderer/lib/format-tokens'
 

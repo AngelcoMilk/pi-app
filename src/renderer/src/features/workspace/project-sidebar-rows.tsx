@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { ChevronRight, Folder, Inbox, Plus } from 'lucide-react'
+import { ChevronRight, Folder, Inbox, Plus } from '@renderer/components/icons'
 import { cn } from '@renderer/lib/utils'
 import { activateWorkspace, switchSessionInPlace } from '@renderer/lib/activate-workspace'
 import { guardSessionSwitch } from '@renderer/lib/session-switch-guard'

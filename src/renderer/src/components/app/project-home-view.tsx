@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { createPortal } from 'react-dom'
-import { ChevronDown, FolderOpen, Folder, Check } from 'lucide-react'
+import { ChevronDown, FolderOpen, Folder, Check } from '@renderer/components/icons'
 import { cn } from '@renderer/lib/utils'
 
 function diskProjectName(path: string) {

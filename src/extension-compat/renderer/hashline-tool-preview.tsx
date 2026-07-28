@@ -3,7 +3,7 @@
  * 由 tool-card-template-registry 注册，不绑定具体扩展包名
  */
 import { useState, type ComponentType } from 'react'
-import { FileText, Hash, Plus, Minus, Search, GitBranchPlus } from 'lucide-react'
+import { FileText, Hash, Plus, Minus, Search, GitBranchPlus } from '@renderer/components/icons'
 import { cn } from '@renderer/lib/utils'
 import { guessLangFromPath } from '@renderer/lib/shiki-highlighter'
 import { CodeBlockView } from '@renderer/features/timeline/code-block-view'

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ipcClient } from '@renderer/lib/ipc-client'
 import { cn } from '@renderer/lib/utils'
-import { RefreshCw, Plug } from 'lucide-react'
+import { RefreshCw, Plug } from '@renderer/components/icons'
 import type { AdapterJson, ConfigField, DerivedRow } from '@extension-compat/adapter-schema'
 import { resolveAdapterText } from '@extension-compat/adapter-schema'
 

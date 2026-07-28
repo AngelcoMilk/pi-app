@@ -5,8 +5,8 @@ import { useUIStore } from '@renderer/stores/ui-store'
 import { ExtensionConfigSubpage } from '@renderer/features/extension-ui/extension-config-subpage'
 import { ModelsSettingsPanel } from '@renderer/features/settings/models-settings-panel'
 import { SlidersHorizontal, Palette, Cpu, Puzzle, Zap, MessageSquareText, Mic,
-  Cable, ChevronLeft, LayoutPanelLeft, Boxes, type LucideIcon
-} from 'lucide-react'
+  Cable, ChevronLeft, LayoutPanelLeft, Boxes, type AppIconComponent
+} from '@renderer/components/icons'
 import { SkillsSettingsPanel } from '@renderer/features/settings/skills-settings-panel'
 import { PromptsSettingsPanel } from '@renderer/features/settings/prompts-settings-panel'
 import {
@@ -26,7 +26,7 @@ import { AdaptersSettings } from '@renderer/features/settings/settings-adapters-
 
 type SettingsPage = 'general' | 'appearance' | 'rightPanels' | 'pi' | 'models' | 'skills' | 'prompts' | 'extensions' | 'adapters' | 'voice'
 
-type NavGroup = { key: string; labelKey: string; pages: { key: SettingsPage; icon: LucideIcon }[] }
+type NavGroup = { key: string; labelKey: string; pages: { key: SettingsPage; icon: AppIconComponent }[] }
 
 const NAV_GROUPS: NavGroup[] = [
   {

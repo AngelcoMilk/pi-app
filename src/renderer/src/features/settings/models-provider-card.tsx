@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { ChevronRight, CloudDownload, Eye, EyeOff, Trash2 } from 'lucide-react'
+import { ChevronRight, CloudDownload, Eye, EyeOff, Trash2 } from '@renderer/components/icons'
 import { cn } from '@renderer/lib/utils'
 import type { PiModelsConfigPayload, PiModelsProviderConfig } from '@shared/ipc-contract'
 import {

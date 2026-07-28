@@ -20,7 +20,7 @@ import { ensureWorkspaceWorkerOnBoot } from '@renderer/lib/ensure-workspace-work
 import { refreshComposerRunDisplay } from '@renderer/lib/composer-run-display'
 import { useExtensionUIStore } from '@renderer/stores/extension-ui-store'
 import { useTranslation } from 'react-i18next'
-import { Settings as SettingsIcon } from 'lucide-react'
+import { Settings as SettingsIcon } from '@renderer/components/icons'
 import { buildRightPanelTabs } from '@renderer/lib/right-panel-catalog'
 import { RightPanelTabs } from '@renderer/features/shell/right-panel-tabs'
 import { loadNormalizedRightPanelPrefs } from '@renderer/lib/right-panel-runtime'

@@ -1,7 +1,7 @@
 // Pi 原生工具预览：read / edit / write / grep / find / bash
 // 主流 主流 Agent 桌面与 IDE：默认折叠、可展开、diff、Shiki 语法高亮
 import { useState, type ReactNode } from 'react'
-import { FileText, Search, Terminal, Plus, Minus, FolderSearch } from 'lucide-react'
+import { FileText, Search, Terminal, Plus, Minus, FolderSearch } from '@renderer/components/icons'
 import { cn } from '@renderer/lib/utils'
 import { guessLangFromPath } from '@renderer/lib/shiki-highlighter'
 import { CodeBlockView } from './code-block-view'

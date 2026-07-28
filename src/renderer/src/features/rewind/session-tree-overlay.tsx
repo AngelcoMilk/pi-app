@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { Loader2, RefreshCw, X } from 'lucide-react'
+import { Loader2, RefreshCw, X } from '@renderer/components/icons'
 import { cn } from '@renderer/lib/utils'
 import { useUIStore } from '@renderer/stores/ui-store'
 import { refreshSessionTree } from '@renderer/lib/rewind-metadata'

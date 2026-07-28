@@ -1,4 +1,4 @@
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight } from '@renderer/components/icons'
 import { cn } from '@renderer/lib/utils'
 import { setPiFilePathDrag } from './workspace-files-types'
 import { joinWorkspacePath } from './path-utils'

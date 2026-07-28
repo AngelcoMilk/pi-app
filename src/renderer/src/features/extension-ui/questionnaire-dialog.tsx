@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { X } from 'lucide-react'
+import { X } from '@renderer/components/icons'
 import { cn } from '@renderer/lib/utils'
 
 export type AskQuestionPayload = {

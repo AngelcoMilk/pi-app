@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { PanelRightOpen } from 'lucide-react'
+import { PanelRightOpen } from '@renderer/components/icons'
 import { cn } from '@renderer/lib/utils'
 import { useUIStore } from '@renderer/stores/ui-store'
 import { buildRightPanelTabs } from '@renderer/lib/right-panel-catalog'

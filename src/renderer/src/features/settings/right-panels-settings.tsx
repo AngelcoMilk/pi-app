@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { GripVertical, LayoutPanelLeft } from 'lucide-react'
+import { GripVertical, LayoutPanelLeft } from '@renderer/components/icons'
 import { cn } from '@renderer/lib/utils'
 import { useSettingsDraft } from '@renderer/features/settings/settings-draft-context'
 import type { RightPanelCatalogItem } from '@shared/right-panels'

@@ -7,7 +7,7 @@ import {
   Wrench,
   Sparkles,
   AlertTriangle,
-} from 'lucide-react'
+} from '@renderer/components/icons'
 import { cn } from '@renderer/lib/utils'
 import { useComposerMetrics } from '@renderer/features/composer/use-composer-metrics'
 import { formatTokens } from '@renderer/lib/format-tokens'

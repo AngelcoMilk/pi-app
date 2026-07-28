@@ -6,7 +6,7 @@ import {
   Archive,
   CheckCircle2, XCircle,
   CornerDownLeft, AlertCircle
-} from 'lucide-react'
+} from '@renderer/components/icons'
 import { lazy, Suspense, useState, memo, useRef, useEffect, useLayoutEffect, useCallback, useMemo, Fragment } from 'react'
 import { ipcClient } from '@renderer/lib/ipc-client'
 import { StreamingCaret } from './tool-card-primitives'

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { CheckSquare, ListTree, BookOpen, FolderTree, RefreshCw, ChevronRight, Target, Clock } from 'lucide-react'
+import { CheckSquare, ListTree, BookOpen, FolderTree, RefreshCw, ChevronRight, Target, Clock } from '@renderer/components/icons'
 import { ipcClient } from '@renderer/lib/ipc-client'
 import { useUIStore } from '@renderer/stores/ui-store'
 import { cn } from '@renderer/lib/utils'

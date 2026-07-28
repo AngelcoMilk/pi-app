@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { ipcClient } from '@renderer/lib/ipc-client'
 import { useUIStore } from '@renderer/stores/ui-store'
 import { cn } from '@renderer/lib/utils'
-import { Image as ImageIcon, X } from 'lucide-react'
+import { Image as ImageIcon, X } from '@renderer/components/icons'
 
 export interface ImageReviewPayload {
   image: string

@@ -1,6 +1,7 @@
 import Store from 'electron-store'
 import type { AsrConfig } from '@shared/asr-types'
 import type { CustomCssOverride, CustomTheme } from '@shared/custom-theme'
+import { DEFAULT_ICON_THEME, type IconTheme } from '@shared/icon-theme'
 import { DEFAULT_TIMELINE_MAX_AUTO_EXPANDED_TOOLS } from '@shared/timeline-settings'
 import { bindSecretStoreBacking } from './secret-store'
 
@@ -9,6 +10,7 @@ export interface StoreSchema {
   currentProject: string | null
   windowBounds: { width: number; height: number; x?: number; y?: number } | null
   theme: 'light' | 'dark' | 'system'
+  iconTheme: IconTheme
   /** 自定义主题（浅/深各一槽，槽位缺省 = 未定制）；null = 完全未定制 */
   customTheme: CustomTheme | null
   /** 结构化主题之后的自由 CSS 覆盖层 */
@@ -59,6 +61,7 @@ const store = new Store<StoreSchema>({
     currentProject: null,
     windowBounds: null,
     theme: 'system',
+    iconTheme: DEFAULT_ICON_THEME,
     customTheme: null,
     customCssOverride: { enabled: false, css: '' },
     panelWidths: null,

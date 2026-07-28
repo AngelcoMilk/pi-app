@@ -16,7 +16,7 @@ import { splitStreamingMarkdown } from '@renderer/features/timeline/markdown-str
 import { MarkdownPathText } from '@renderer/features/timeline/markdown-inline-paths'
 import { FencedMathBlock } from '@renderer/features/timeline/markdown-math'
 import { StreamLiveTailBlock } from '@renderer/features/timeline/stream-text-reveal'
-import { Check, ChevronDown, Copy } from 'lucide-react'
+import { Check, ChevronDown, Copy } from '@renderer/components/icons'
 
 function CodeBlock({
   className,

@@ -1,7 +1,7 @@
 import { memo, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useUIStore } from '@renderer/stores/ui-store'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight } from '@renderer/components/icons'
 import { cn } from '@renderer/lib/utils'
 import { normalizeSessionFileKey } from '@renderer/lib/session-file-key'
 import { ToolIcon } from './tool-icon'

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { GitFork, Loader2, RefreshCw } from 'lucide-react'
+import { GitFork, Loader2, RefreshCw } from '@renderer/components/icons'
 import { useUIStore } from '@renderer/stores/ui-store'
 import { navigateSessionToEntry } from '@renderer/lib/session-rewind'
 import { forkSessionFromEntry } from '@renderer/lib/session-fork'

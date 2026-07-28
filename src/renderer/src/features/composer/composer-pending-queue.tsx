@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { ListOrdered } from 'lucide-react'
+import { ListOrdered } from '@renderer/components/icons'
 import { useUIStore } from '@renderer/stores/ui-store'
 
 function truncateLine(text: string, max = 120): string {

@@ -1,4 +1,4 @@
-import { Plus } from 'lucide-react'
+import { Plus } from '@renderer/components/icons'
 import { cn } from '@renderer/lib/utils'
 import { queueComposerLineRefAndFocus } from '@renderer/lib/composer-line-ref'
 

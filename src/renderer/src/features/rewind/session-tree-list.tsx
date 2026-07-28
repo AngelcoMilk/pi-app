@@ -1,4 +1,4 @@
-import { ArrowLeft, Bot, GitBranch, MessageSquare, Sparkles, Wrench } from 'lucide-react'
+import { ArrowLeft, Bot, GitBranch, MessageSquare, Sparkles, Wrench } from '@renderer/components/icons'
 import { useMemo, type ReactNode } from 'react'
 import { cn } from '@renderer/lib/utils'
 import { buildGitLaneLayout } from './session-tree-git-lanes'

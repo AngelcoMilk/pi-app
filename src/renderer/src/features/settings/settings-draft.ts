@@ -1,7 +1,9 @@
 import type { i18n as I18n } from 'i18next'
 import { ipcClient } from '@renderer/lib/ipc-client'
+import { applyIconTheme } from '@renderer/components/icons'
 import { useUIStore } from '@renderer/stores/ui-store'
 import type { AsrConfig } from '@shared/asr-types'
+import { normalizeIconTheme, type IconTheme } from '@shared/icon-theme'
 import {
   type CustomCssOverride,
   type CustomTheme,
@@ -23,6 +25,7 @@ export type LanguageChoice = 'zh' | 'en'
 
 export type SettingsDraft = {
   theme: ThemeChoice
+  iconTheme: IconTheme
   customTheme: CustomTheme
   customCssOverride: CustomCssOverride
   language: LanguageChoice
@@ -77,6 +80,7 @@ export function asrConfigFromSettingsResponse(raw: AsrConfig): AsrConfig {
 export function draftSignature(d: SettingsDraft): string {
   return JSON.stringify({
     theme: d.theme,
+    iconTheme: d.iconTheme,
     customTheme: d.customTheme,
     customCssOverride: d.customCssOverride,
     language: d.language,
@@ -109,6 +113,7 @@ export async function loadSettingsDraftFromDisk(i18nLanguage: string): Promise<S
 
   return {
     theme: normalizeThemeChoice(s.theme),
+    iconTheme: normalizeIconTheme(s.iconTheme),
     customTheme: normalizeCustomTheme(s.customTheme),
     customCssOverride: normalizeCustomCssOverride(s.customCssOverride),
     language: normalizeLanguage(s.language, normalizeLanguage(i18nLanguage, 'zh')),
@@ -205,6 +210,7 @@ export function watchSystemTheme(): () => void {
 /** 仅界面预览，不写盘 */
 export function previewDraftUi(draft: SettingsDraft, i18n: I18n): void {
   applyThemeToDocument(draft.theme)
+  applyIconTheme(draft.iconTheme)
   applyCustomTheme(draft.customTheme)
   injectCustomCssOverride(draft.customCssOverride)
   if (i18n.language !== draft.language) void i18n.changeLanguage(draft.language)
@@ -212,6 +218,7 @@ export function previewDraftUi(draft: SettingsDraft, i18n: I18n): void {
 
 export async function commitSettingsDraft(draft: SettingsDraft, i18n: I18n): Promise<AsrConfig> {
   await ipcClient.invoke('settings.set', { key: 'theme', value: draft.theme })
+  await ipcClient.invoke('settings.set', { key: 'iconTheme', value: draft.iconTheme })
   await ipcClient.invoke('settings.set', {
     key: 'customTheme',
     value: draft.customTheme.light || draft.customTheme.dark ? draft.customTheme : null,
@@ -251,6 +258,7 @@ export async function commitSettingsDraft(draft: SettingsDraft, i18n: I18n): Pro
   draft.asrConfig = savedAsr
 
   useUIStore.getState().setTheme(draft.theme)
+  applyIconTheme(draft.iconTheme)
   useUIStore.getState().setTimelineMaxAutoExpandedTools(draft.timelineMaxAutoExpandedTools)
   applyThemeToDocument(draft.theme)
   applyCustomTheme(draft.customTheme)

@@ -15,7 +15,7 @@ import {
   FolderOpen,
   CheckCheck,
   GitCommitHorizontal,
-} from 'lucide-react'
+} from '@renderer/components/icons'
 
 export type DiffMode = 'inline' | 'split'
 

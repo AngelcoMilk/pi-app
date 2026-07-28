@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { ipcClient } from '@renderer/lib/ipc-client'
 import { useUIStore } from '@renderer/stores/ui-store'
 import { cn } from '@renderer/lib/utils'
-import { X, Search, Check, Cpu, ChevronRight } from 'lucide-react'
+import { X, Search, Check, Cpu, ChevronRight } from '@renderer/components/icons'
 import { toast } from 'sonner'
 import { formatModelFull } from '@renderer/lib/format-run-display'
 

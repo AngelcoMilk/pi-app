@@ -13,7 +13,7 @@ import {
   RefreshCw,
   Columns2,
   Rows2,
-} from 'lucide-react'
+} from '@renderer/components/icons'
 import { parseGitStatus } from './review-git-utils'
 import { ChangeIcon, FileDiffView, ReviewCommitBar, type DiffMode } from './review-diff-views'
 

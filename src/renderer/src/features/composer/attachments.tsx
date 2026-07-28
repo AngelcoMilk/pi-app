@@ -7,8 +7,8 @@ import {
   File,
   Music,
   Video,
-  type LucideIcon,
-} from 'lucide-react'
+  type AppIconComponent,
+} from '@renderer/components/icons'
 import { createElement } from 'react'
 import { wireDelayedTooltip } from './delayed-tooltip'
 import { renderToStaticMarkup } from 'react-dom/server'
@@ -79,7 +79,7 @@ export function getAttachmentKind(name: string): AttachmentKind {
   return 'file'
 }
 
-export function getAttachmentIcon(kind: AttachmentKind): LucideIcon {
+export function getAttachmentIcon(kind: AttachmentKind): AppIconComponent {
   switch (kind) {
     case 'image': return ImageIcon
     case 'pdf': return FileText
@@ -116,7 +116,7 @@ function escapeHtml(s: string): string {
 
 const ICON_SVGS = {} as Record<AttachmentKind, string>
 function buildIconSvgs() {
-  const icons: Record<AttachmentKind, LucideIcon> = {
+  const icons: Record<AttachmentKind, AppIconComponent> = {
     image: ImageIcon, pdf: FileText, doc: FileText, sheet: FileSpreadsheet,
     archive: FileArchive, code: FileCode2, audio: Music, video: Video, file: File,
     'line-ref': FileCode2,

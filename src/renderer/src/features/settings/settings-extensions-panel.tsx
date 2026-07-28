@@ -6,7 +6,7 @@ import { ipcClient } from '@renderer/lib/ipc-client'
 import { SettingsPageHeader } from '@renderer/features/settings/settings-shell'
 import { btnDanger } from '@renderer/features/settings/settings-controls'
 import { Switch } from '@renderer/components/ui/switch'
-import { Check, Dot } from 'lucide-react'
+import { Check, Dot } from '@renderer/components/icons'
 
 export function ExtensionsSettings() {
   const { t } = useTranslation()

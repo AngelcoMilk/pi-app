@@ -2,11 +2,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const invokeMock = vi.fn()
 const setThemeMock = vi.fn()
+const applyIconThemeMock = vi.fn()
 
 vi.mock('@renderer/lib/ipc-client', () => ({
   ipcClient: {
     invoke: (...args: unknown[]) => invokeMock(...args),
   },
+}))
+
+vi.mock('@renderer/components/icons', () => ({
+  applyIconTheme: (...args: unknown[]) => applyIconThemeMock(...args),
 }))
 
 vi.mock('@renderer/stores/ui-store', () => ({
@@ -29,6 +34,7 @@ describe('hydrateThemeFromSettings', () => {
     localStorage.removeItem('pi-desktop-custom-css')
     invokeMock.mockReset()
     setThemeMock.mockReset()
+    applyIconThemeMock.mockReset()
   })
 
   it('should_apply_dark_class_and_sync_ui_store_when_settings_theme_is_dark', async () => {
@@ -49,6 +55,18 @@ describe('hydrateThemeFromSettings', () => {
     await hydrateThemeFromSettings()
 
     expect(setThemeMock).toHaveBeenCalledWith('system')
+  })
+
+  it('hydrates icon theme and defaults invalid values to phosphor', async () => {
+    invokeMock.mockResolvedValue({ settings: { iconTheme: 'iconoir' } })
+    const { loadSettingsDraftFromDisk, previewDraftUi } = await import('../settings-draft')
+    const i18n = { language: 'en', changeLanguage: vi.fn() }
+
+    const loaded = await loadSettingsDraftFromDisk('en')
+    previewDraftUi(loaded, i18n as never)
+
+    expect(loaded.iconTheme).toBe('iconoir')
+    expect(applyIconThemeMock).toHaveBeenCalledWith('iconoir')
   })
 
   it('should_rebuild_custom_theme_css_from_settings', async () => {

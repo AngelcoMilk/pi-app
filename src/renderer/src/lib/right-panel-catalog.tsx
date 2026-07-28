@@ -1,68 +1,34 @@
-import type { LucideIcon } from 'lucide-react'
 import {
   Activity,
-  BrainCircuit,
-  Eye,
   FileSearch,
-  FileText,
   FolderTree,
   GitBranch,
-  Globe,
-  Hash,
-  Image,
-  Lightbulb,
   ListTree,
-  MessageCircleQuestion,
   Network,
   PanelRight,
-  Play,
-  Scissors,
-  Search,
-  ShieldCheck,
-  Sparkles,
-  Terminal,
-} from 'lucide-react'
+  normalizeLegacyIconName,
+  resolveAppIcon,
+  type AppIconComponent,
+  type AppIconName,
+} from '@renderer/components/icons'
 import type { RightPanelCatalogItem } from '@shared/right-panels'
 
-/**
- * Explicit icon registry for core + known adapter panel icons.
- * Avoids `import * as LucideIcons` which ships the full namespace (~1MB).
- * Unknown names fall back to PanelRight.
- */
-const SUPPORTED_PANEL_ICONS: Record<string, LucideIcon> = {
-  // Core panel ids and Lucide component names used in CORE_RIGHT_PANEL_CATALOG
+/** Core panel ids resolve directly; adapter names share the legacy semantic resolver. */
+const CORE_PANEL_ICONS: Record<string, AppIconComponent> = {
   review: GitBranch,
   run: Activity,
   context: FileSearch,
   tree: ListTree,
   files: FolderTree,
-  GitBranch,
-  Activity,
-  FileSearch,
-  FolderTree,
-  PanelRight,
-  ListTree,
-  Network,
-  // Built-in adapter.json icon strings (PascalCase Lucide names)
-  Globe,
-  MessageCircleQuestion,
-  Play,
-  Eye,
-  Search,
-  Terminal,
-  ShieldCheck,
-  Hash,
-  FileText,
-  BrainCircuit,
-  Scissors,
-  Sparkles,
-  Lightbulb,
-  Image,
+  intercom: Network,
 }
 
-function resolveIcon(name?: string): LucideIcon {
-  if (!name) return PanelRight
-  return SUPPORTED_PANEL_ICONS[name] || PanelRight
+export function resolveRightPanelIconName(name?: string): AppIconName {
+  return normalizeLegacyIconName(name) ?? 'panel-right'
+}
+
+function resolveIcon(name?: string): AppIconComponent {
+  return (name && CORE_PANEL_ICONS[name]) || resolveAppIcon(resolveRightPanelIconName(name)) || PanelRight
 }
 
 export function buildRightPanelTabs(

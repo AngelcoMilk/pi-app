@@ -9,6 +9,10 @@ vi.mock('@renderer/lib/ipc-client', () => ({
   },
 }))
 
+vi.mock('@renderer/components/icons', () => ({
+  applyIconTheme: vi.fn(),
+}))
+
 vi.mock('@renderer/stores/ui-store', () => ({
   useUIStore: {
     getState: () => ({
@@ -22,6 +26,7 @@ vi.mock('@renderer/stores/ui-store', () => ({
 function draft(): SettingsDraft {
   return {
     theme: 'light',
+    iconTheme: 'phosphor',
     customTheme: {},
     customCssOverride: { enabled: true, css: ':root { --brand: #ff0000; }' },
     language: 'en',
@@ -68,10 +73,13 @@ describe('custom theme settings draft contract', () => {
 
     const loaded = await loadSettingsDraftFromDisk('en')
     const changed = { ...loaded, customCssOverride: { ...loaded.customCssOverride, css: 'body{color:red}' } }
+    const changedIcons = { ...loaded, iconTheme: 'lucide' as const }
 
+    expect(loaded.iconTheme).toBe('phosphor')
     expect(loaded.customTheme).toEqual({})
     expect(loaded.customCssOverride).toEqual({ enabled: true, css: 'body{}' })
     expect(draftSignature(changed)).not.toBe(draftSignature(loaded))
+    expect(draftSignature(changedIcons)).not.toBe(draftSignature(loaded))
   })
 
   it('previews both layers in order and skips them together in safe mode', async () => {
@@ -107,6 +115,10 @@ describe('custom theme settings draft contract', () => {
 
     await commitSettingsDraft(draft(), i18n as never)
 
+    expect(invokeMock).toHaveBeenCalledWith('settings.set', {
+      key: 'iconTheme',
+      value: 'phosphor',
+    })
     expect(invokeMock).toHaveBeenCalledWith('settings.set', {
       key: 'customCssOverride',
       value: { enabled: true, css: ':root { --brand: #ff0000; }' },

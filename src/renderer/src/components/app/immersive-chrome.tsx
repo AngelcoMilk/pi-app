@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { PanelLeft } from 'lucide-react'
+import { PanelLeft } from '@renderer/components/icons'
 import { PiMark } from '@renderer/components/brand/pi-mark'
 import { WindowControls } from '@renderer/components/app/window-controls'
 import { cn } from '@renderer/lib/utils'

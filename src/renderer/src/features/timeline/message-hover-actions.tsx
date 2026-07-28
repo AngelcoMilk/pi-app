@@ -1,5 +1,5 @@
 import { memo, useState, type ReactNode } from 'react'
-import { Copy, Check, Undo2, GitFork } from 'lucide-react'
+import { Copy, Check, Undo2, GitFork } from '@renderer/components/icons'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@renderer/lib/utils'
 

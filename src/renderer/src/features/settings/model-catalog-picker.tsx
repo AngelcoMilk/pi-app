@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Check, Plus, Search } from 'lucide-react'
+import { Check, Plus, Search } from '@renderer/components/icons'
 import { cn } from '@renderer/lib/utils'
 
 export function ModelCatalogPicker({

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight } from '@renderer/components/icons'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@renderer/lib/utils'
 

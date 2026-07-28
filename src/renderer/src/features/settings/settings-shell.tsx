@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import type { LucideIcon } from 'lucide-react'
+import type { AppIconComponent } from '@renderer/components/icons'
 import { cn } from '@renderer/lib/utils'
 import { OverlayScrollHost } from '@renderer/components/ui/overlay-scrollbar'
 
@@ -85,7 +85,7 @@ export function SettingsNavItem({
   onClick,
 }: {
   active: boolean
-  icon: LucideIcon
+  icon: AppIconComponent
   label: string
   onClick: () => void
 }) {

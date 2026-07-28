@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useUIStore } from '@renderer/stores/ui-store'
-import { ChevronRight, FolderOpen, Inbox, Plus } from 'lucide-react'
+import { ChevronRight, FolderOpen, Inbox, Plus } from '@renderer/components/icons'
 import { ipcClient } from '@renderer/lib/ipc-client'
 import { activateWorkspace } from '@renderer/lib/activate-workspace'
 import { SidebarAnimatedCollapse } from '@renderer/components/ui/sidebar-animated-collapse'

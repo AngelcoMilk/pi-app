@@ -1,6 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { AlertTriangle, ChevronDown, ChevronRight, Clipboard, Copy, RotateCcw, X } from 'lucide-react'
+import { AlertTriangle, ChevronDown, ChevronRight, Clipboard, Copy, RotateCcw, X } from '@renderer/components/icons'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { Switch } from '@renderer/components/ui/switch'

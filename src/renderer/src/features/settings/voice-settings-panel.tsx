@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Mic, ExternalLink, Search, KeyRound } from 'lucide-react'
+import { Mic, ExternalLink, Search, KeyRound } from '@renderer/components/icons'
 import { ipcClient } from '@renderer/lib/ipc-client'
 import { useSettingsDraft } from '@renderer/features/settings/settings-draft-context'
 import { SettingsPageHeader } from '@renderer/features/settings/settings-shell'

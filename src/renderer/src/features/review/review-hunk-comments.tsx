@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { MessageSquarePlus } from 'lucide-react'
+import { MessageSquarePlus } from '@renderer/components/icons'
 import {
   deleteReviewComment,
   listReviewComments,

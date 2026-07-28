@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
-import { ArrowUp, ArrowDown, CornerDownLeft } from 'lucide-react'
+import { ArrowUp, ArrowDown, CornerDownLeft } from '@renderer/components/icons'
 import { cn } from '@renderer/lib/utils'
 import { OverlayScrollHost } from '@renderer/components/ui/overlay-scrollbar'
 import {

@@ -11,7 +11,16 @@ import { SettingsPageHeader } from '@renderer/features/settings/settings-shell'
 import { SettingRow, SettingsSection } from '@renderer/features/settings/settings-page-shared'
 import { btnOutline, numberInputCls } from '@renderer/features/settings/settings-controls'
 import { Switch } from '@renderer/components/ui/switch'
-import { Folder, Sparkles, Moon, Sun, Monitor, type LucideIcon } from 'lucide-react'
+import {
+  Folder,
+  Monitor,
+  Moon,
+  Sparkles,
+  Sun,
+  ThemedIcon,
+  type AppIconComponent,
+} from '@renderer/components/icons'
+import { ICON_THEMES, type IconTheme } from '@shared/icon-theme'
 
 export function GeneralSettings() {
   const { t } = useTranslation()
@@ -231,9 +240,9 @@ export function GeneralSettings() {
 
 export function AppearanceSettings() {
   const { t } = useTranslation()
-  const { draft, setTheme, setTimelineMaxAutoExpandedTools } = useSettingsDraft()
+  const { draft, setTheme, setIconTheme, setTimelineMaxAutoExpandedTools } = useSettingsDraft()
 
-  const themes: { key: 'light' | 'dark' | 'system'; icon: LucideIcon }[] = [
+  const themes: { key: 'light' | 'dark' | 'system'; icon: AppIconComponent }[] = [
     { key: 'light', icon: Sun },
     { key: 'dark', icon: Moon },
     { key: 'system', icon: Monitor },
@@ -260,6 +269,37 @@ export function AppearanceSettings() {
               >
                 <Icon className="h-4 w-4" strokeWidth={1.5} />
                 {t(`settings:appearance.theme${key.charAt(0).toUpperCase() + key.slice(1)}`)}
+              </button>
+            ))}
+          </div>
+        </SettingRow>
+      </SettingsSection>
+
+      <SettingsSection title={t('settings:appearance.iconThemeTitle')}>
+        <SettingRow
+          label={t('settings:appearance.iconThemeLabel')}
+          description={t('settings:appearance.iconThemeDesc')}
+        >
+          <div className="flex flex-wrap gap-1.5">
+            {ICON_THEMES.map((theme: IconTheme) => (
+              <button
+                key={theme}
+                type="button"
+                aria-pressed={draft.iconTheme === theme}
+                onClick={() => setIconTheme(theme)}
+                className={cn(
+                  'settings-chip flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-sm transition-all duration-motion-fast ease-motion-ease',
+                  draft.iconTheme === theme
+                    ? 'border-primary bg-primary/5 text-foreground'
+                    : 'border-border text-muted-foreground hover:bg-accent/50',
+                )}
+              >
+                <span className="flex items-center gap-0.5" aria-hidden="true">
+                  <ThemedIcon theme={theme} name="settings" className="h-3 w-3" />
+                  <ThemedIcon theme={theme} name="terminal" className="h-3 w-3" />
+                  <ThemedIcon theme={theme} name="search" className="h-3 w-3" />
+                </span>
+                {t(`settings:appearance.iconTheme${theme.charAt(0).toUpperCase() + theme.slice(1)}`)}
               </button>
             ))}
           </div>

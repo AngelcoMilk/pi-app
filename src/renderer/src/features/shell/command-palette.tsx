@@ -9,8 +9,8 @@ import {
   ListTree,
   MessageSquare,
   Settings,
-  type LucideIcon,
-} from 'lucide-react'
+  type AppIconComponent,
+} from '@renderer/components/icons'
 import { cn } from '@renderer/lib/utils'
 import { useUIStore } from '@renderer/stores/ui-store'
 
@@ -18,7 +18,7 @@ export type CommandPaletteAction = {
   id: string
   label: string
   hint?: string
-  icon: LucideIcon
+  icon: AppIconComponent
   keywords?: string
   run: () => void
 }

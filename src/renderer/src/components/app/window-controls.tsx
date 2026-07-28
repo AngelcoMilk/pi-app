@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Minus, Square, X, Copy } from 'lucide-react'
+import { Minus, Square, X, Copy } from '@renderer/components/icons'
 import { cn } from '@renderer/lib/utils'
 import { isMac } from '@renderer/lib/platform'
 

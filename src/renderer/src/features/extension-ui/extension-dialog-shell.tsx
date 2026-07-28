@@ -1,5 +1,5 @@
 import { useEffect, type ReactNode } from 'react'
-import { X } from 'lucide-react'
+import { X } from '@renderer/components/icons'
 import { useTranslation } from 'react-i18next'
 
 export function ExtensionDialogShell({

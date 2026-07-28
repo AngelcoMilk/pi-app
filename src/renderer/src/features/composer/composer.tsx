@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Send, Square, Upload, Plus } from 'lucide-react'
+import { Send, Square, Upload, Plus } from '@renderer/components/icons'
 import { useUIStore } from '@renderer/stores/ui-store'
 import { cn } from '@renderer/lib/utils'
 import {

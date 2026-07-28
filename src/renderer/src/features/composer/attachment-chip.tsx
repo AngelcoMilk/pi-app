@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import { X } from 'lucide-react'
+import { X } from '@renderer/components/icons'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@renderer/lib/utils'
 import { getAttachmentIcon, type AttachmentMeta } from './attachments'

@@ -1,5 +1,5 @@
 import { memo, useEffect, useState } from 'react'
-import { Check, ChevronDown, Copy } from 'lucide-react'
+import { Check, ChevronDown, Copy } from '@renderer/components/icons'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@renderer/lib/utils'
 import { sanitizeHtml } from '@renderer/lib/sanitize'

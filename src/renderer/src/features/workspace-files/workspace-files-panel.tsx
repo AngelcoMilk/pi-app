@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
-import { ChevronLeft, ChevronRight, Maximize2, Search } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Maximize2, Search } from '@renderer/components/icons'
 import { cn } from '@renderer/lib/utils'
 import { useUIStore } from '@renderer/stores/ui-store'
 import { OverlayScrollHost } from '@renderer/components/ui/overlay-scrollbar'

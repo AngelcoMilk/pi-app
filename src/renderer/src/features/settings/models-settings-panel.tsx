@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
-import { Boxes, Plus, RefreshCw, Sparkles } from 'lucide-react'
+import { Boxes, Plus, RefreshCw, Sparkles } from '@renderer/components/icons'
 import { ConfirmDialog } from '@renderer/features/settings/confirm-dialog'
 import { ipcClient } from '@renderer/lib/ipc-client'
 import { SettingsPageHeader } from '@renderer/features/settings/settings-shell'

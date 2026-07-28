@@ -36,6 +36,7 @@ vi.mock('./settings-draft-context', () => ({
 function baseDraft(): SettingsDraft {
   return {
     theme: 'system',
+    iconTheme: 'phosphor',
     customTheme: {},
     customCssOverride: { enabled: false, css: '' },
     language: 'en',

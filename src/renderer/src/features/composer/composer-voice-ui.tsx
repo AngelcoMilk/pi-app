@@ -1,4 +1,4 @@
-import { Mic, Square } from 'lucide-react'
+import { Mic, Square } from '@renderer/components/icons'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@renderer/lib/utils'
 import type { VoiceState } from './use-voice-input'

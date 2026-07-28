@@ -1,66 +1,21 @@
-// Universal tool icon resolver (兼容层 v2).
-// Built-in tools keep quiet mono icons; plugin tools resolve icon from adapter.json toolCard.icon.
-// No per-plugin if(name===) branches — all plugin icons come from the adapter catalog.
-import { memo, type ComponentType } from 'react'
+import { memo } from 'react'
 import {
-  FileText,
   FileEdit,
+  FileText,
+  FolderTree,
+  PencilLine,
+  Search,
   Terminal,
   Wrench,
-  Image as ImageIcon,
-  Globe,
-  GitBranch,
-  MessageCircleQuestion,
-  Search,
-  Eye,
-  ShieldCheck,
-  BrainCircuit,
-  Network,
-  MessagesSquare,
-  Lightbulb,
-  Play,
-  Scissors,
-  Sparkles,
-  Zap,
-  Palette,
-  Users,
-  FolderTree,
-  List,
-  PencilLine,
-} from 'lucide-react'
+  normalizeLegacyIconName,
+  resolveAppIcon,
+  type AppIconComponent,
+  type AppIconName,
+} from '@renderer/components/icons'
 import { cn } from '@renderer/lib/utils'
 import { resolveAdapterForTool } from './tool-card-registry'
 
-// Static icon map — production bundle cannot dynamic-import, so enumerate lucide names used by adapters.
-const ICON_MAP: Record<string, ComponentType<{ className?: string }>> = {
-  FileText,
-  FileEdit,
-  Terminal,
-  Wrench,
-  Image: ImageIcon,
-  Globe,
-  GitBranch,
-  MessageCircleQuestion,
-  Search,
-  Eye,
-  ShieldCheck,
-  BrainCircuit,
-  Network,
-  MessagesSquare,
-  Lightbulb,
-  Play,
-  Scissors,
-  Sparkles,
-  Zap,
-  Palette,
-  Users,
-  FolderTree,
-  List,
-  PencilLine,
-}
-
-// Built-in tools → stable lucide glyph (color stays neutral for visual unity)
-const BUILTIN_ICON: Record<string, ComponentType<{ className?: string }>> = {
+const BUILTIN_ICON: Record<string, AppIconComponent> = {
   read: FileText,
   edit: PencilLine,
   write: FileEdit,
@@ -73,16 +28,16 @@ const BUILTIN_ICON: Record<string, ComponentType<{ className?: string }>> = {
   ffgrep: Search,
 }
 
+export function resolveToolIconName(name: string): AppIconName {
+  const adapterName = resolveAdapterForTool(name)?.toolCard?.icon
+  return normalizeLegacyIconName(adapterName) ?? 'wrench'
+}
+
 function ToolIconImpl({ name, className }: { name: string; className?: string }) {
   const cls = className || 'h-3.5 w-3.5 timeline-text-quiet'
   const Builtin = BUILTIN_ICON[name]
-  if (Builtin) {
-    return <Builtin className={cn(cls, 'text-current')} />
-  }
-  const adapter = resolveAdapterForTool(name)
-  const iconName = adapter?.toolCard?.icon
-  const Comp = (iconName && ICON_MAP[iconName]) || Wrench
-  return <Comp className={cn(cls, 'text-current')} />
+  const Icon = Builtin ?? resolveAppIcon(resolveToolIconName(name)) ?? Wrench
+  return <Icon className={cn(cls, 'text-current')} />
 }
 
 export const ToolIcon = memo(ToolIconImpl)

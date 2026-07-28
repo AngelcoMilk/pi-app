@@ -3,7 +3,7 @@
 import { ipcClient } from '@renderer/lib/ipc-client'
 import { useUIStore } from '@renderer/stores/ui-store'
 import { cn } from '@renderer/lib/utils'
-import { X, Brain, Check } from 'lucide-react'
+import { X, Brain, Check } from '@renderer/components/icons'
 import { toast } from 'sonner'
 import { normalizeThinkingLevel } from '@renderer/lib/format-run-display'
 

@@ -22,6 +22,7 @@ import {
   type LanguageChoice,
 } from '@renderer/features/settings/settings-draft'
 import type { AsrConfig } from '@shared/asr-types'
+import type { IconTheme } from '@shared/icon-theme'
 import type { CustomCssOverride, CustomTheme } from '@shared/custom-theme'
 import { normalizeTimelineMaxAutoExpandedTools } from '@shared/timeline-settings'
 import { setAsrConfigPreview } from '@renderer/lib/asr-config-effective'
@@ -48,6 +49,7 @@ type SettingsDraftContextValue = {
   loading: boolean
   saving: boolean
   setTheme: (t: ThemeChoice) => void
+  setIconTheme: (theme: IconTheme) => void
   setCustomTheme: (t: CustomTheme) => void
   setCustomCssOverride: (override: CustomCssOverride) => void
   setLanguage: (l: LanguageChoice) => void
@@ -235,6 +237,7 @@ export function SettingsDraftProvider({ children }: { children: ReactNode }) {
       loading,
       saving,
       setTheme: (t) => patch((d) => ({ ...d, theme: t })),
+      setIconTheme: (iconTheme) => patch((d) => ({ ...d, iconTheme })),
       setCustomTheme: (t) => patch((d) => ({ ...d, customTheme: t })),
       setCustomCssOverride: (override) => patch((d) => ({ ...d, customCssOverride: override })),
       setLanguage: (l) => patch((d) => ({ ...d, language: l })),
