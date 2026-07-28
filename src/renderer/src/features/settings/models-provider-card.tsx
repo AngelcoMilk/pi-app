@@ -103,7 +103,7 @@ export function ModelsProviderCard({
           </div>
         </div>
         <div className="shrink-0 text-right">
-          <div className="font-mono text-sm font-medium">{modelCount}</div>
+          <div className="font-mono text-sm text-foreground">{modelCount}</div>
           <div className="text-2xs text-muted-foreground">{t('models.modelLabel')}</div>
         </div>
       </button>

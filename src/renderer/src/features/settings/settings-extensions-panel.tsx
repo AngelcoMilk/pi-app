@@ -6,6 +6,7 @@ import { ipcClient } from '@renderer/lib/ipc-client'
 import { SettingsPageHeader } from '@renderer/features/settings/settings-shell'
 import { btnDanger } from '@renderer/features/settings/settings-controls'
 import { Switch } from '@renderer/components/ui/switch'
+import { Check, Dot } from 'lucide-react'
 
 export function ExtensionsSettings() {
   const { t } = useTranslation()
@@ -131,11 +132,14 @@ export function ExtensionsSettings() {
             <span
               key={name}
               className={cn(
-                'rounded px-1.5 py-0.5 font-mono text-2xs',
+                'inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 font-mono text-2xs',
                 runtimeNames.has(name) ? 'bg-green-500/10 text-green-700 dark:text-green-400' : 'bg-muted text-muted-foreground/45',
               )}
             >
-              {runtimeNames.has(name) ? '✓ ' : '· '}{name}
+              {runtimeNames.has(name)
+                ? <Check className="h-3 w-3" strokeWidth={2} />
+                : <Dot className="h-3 w-3" strokeWidth={2} />}
+              {name}
             </span>
           ))}
         </div>

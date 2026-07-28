@@ -1,12 +1,12 @@
-import { ChevronRight, Plus, Trash2 } from 'lucide-react'
+import { ArrowRight, ChevronRight, Plus, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { inputCls as settingsInputCls } from '@renderer/features/settings/settings-controls'
 import { cn } from '@renderer/lib/utils'
 import type { PiModelsProviderConfig } from '@shared/ipc-contract'
 
 export type LocalModelEntry = NonNullable<PiModelsProviderConfig['models']>[number]
 
-const inputCls =
-  'settings-field-focus w-full rounded-md border border-border bg-background px-2 py-1 font-mono text-xs'
+const modelEntryInputCls = cn(settingsInputCls, 'px-2 py-1 text-xs')
 const labelCls = 'text-2xs font-medium text-muted-foreground/70'
 
 const THINKING_LEVEL_OPTIONS = [
@@ -143,7 +143,7 @@ export function ModelEntryEditor({
             <div className="sm:col-span-2">
               <label className={labelCls}>{t('models.modelIdApi')}</label>
               <input
-                className={inputCls}
+                className={modelEntryInputCls}
                 value={model.id}
                 readOnly
                 title=""
@@ -152,7 +152,7 @@ export function ModelEntryEditor({
             <div className="sm:col-span-2">
               <label className={labelCls}>{t('models.displayName')}</label>
               <input
-                className={cn(inputCls, 'font-sans')}
+                className={cn(modelEntryInputCls, 'font-sans')}
                 value={model.name || ''}
                 placeholder={model.id}
                 onChange={(e) => onChange({ name: e.target.value || undefined })}
@@ -161,7 +161,7 @@ export function ModelEntryEditor({
             <div>
               <label className={labelCls}>{t('models.apiOverride')}</label>
               <select
-                className={cn(inputCls, 'font-sans')}
+                className={cn(modelEntryInputCls, 'font-sans')}
                 value={model.api || ''}
                 onChange={(e) => onChange({ api: e.target.value || undefined })}
               >
@@ -194,7 +194,7 @@ export function ModelEntryEditor({
               <label className={labelCls}>{t('models.contextWindowLabel')}</label>
               <input
                 type="number"
-                className={inputCls}
+                className={modelEntryInputCls}
                 min={0}
                 step={1024}
                 placeholder="128000"
@@ -209,7 +209,7 @@ export function ModelEntryEditor({
               <label className={labelCls}>{t('models.maxOutputToken')}</label>
               <input
                 type="number"
-                className={inputCls}
+                className={modelEntryInputCls}
                 min={0}
                 step={256}
                 placeholder="16384"
@@ -241,7 +241,7 @@ export function ModelEntryEditor({
                     {thinkingEntries.map(([key, val]) => (
                       <div key={key} className="flex items-center gap-2">
                         <select
-                          className={cn(inputCls, 'w-32 shrink-0 font-sans')}
+                          className={cn(modelEntryInputCls, 'w-32 shrink-0 font-sans')}
                           value={key}
                           onChange={(e) => setThinkingKey(key, e.target.value)}
                         >
@@ -251,9 +251,9 @@ export function ModelEntryEditor({
                             </option>
                           ))}
                         </select>
-                        <span className="shrink-0 text-2xs text-muted-foreground">→</span>
+                        <ArrowRight className="h-3 w-3 shrink-0 text-muted-foreground" strokeWidth={2} />
                         <input
-                          className={cn(inputCls, 'font-mono')}
+                          className={modelEntryInputCls}
                           value={val}
                           placeholder={t('models.thinkingParamPlaceholder')}
                           onChange={(e) => setThinkingValue(key, e.target.value)}
