@@ -20,14 +20,14 @@ import {
 export type DiffMode = 'inline' | 'split'
 
 export function ChangeIcon({ type }: { type: string }) {
-  if (type === 'added') return <FilePlus className="h-3.5 w-3.5 text-green-500" />
-  if (type === 'deleted') return <FileMinus className="h-3.5 w-3.5 text-red-500" />
+  if (type === 'added') return <FilePlus className="h-3.5 w-3.5 text-[var(--diff-added)]" />
+  if (type === 'deleted') return <FileMinus className="h-3.5 w-3.5 text-[var(--diff-removed)]" />
   return <FileEdit className="h-3.5 w-3.5 text-amber-500" />
 }
 
 function lineColor(type: DiffLine['type']): string {
-  if (type === 'added') return 'bg-green-500/8 text-green-700 dark:text-green-300'
-  if (type === 'removed') return 'bg-red-500/8 text-red-700 dark:text-red-300'
+  if (type === 'added') return 'diff-line-added'
+  if (type === 'removed') return 'diff-line-removed'
   if (type === 'hunk-header') return 'text-foreground-secondary/60'
   return 'text-foreground-secondary'
 }
@@ -64,7 +64,7 @@ function DiffHunkView({
           onClick={onToggleStage}
           className={cn(
             'chrome-icon-btn rounded p-0.5 transition-colors',
-            staged ? 'text-green-500' : 'text-muted-foreground/50 hover:text-foreground',
+            staged ? 'text-[var(--diff-added)]' : 'text-muted-foreground/50 hover:text-foreground',
           )}
           title={staged ? '撤销暂存此 hunk' : '暂存此 hunk'}
         >
@@ -152,7 +152,7 @@ function SplitHunk({ hunk, filePath }: { hunk: DiffHunk; filePath: string }) {
               key={i}
               className={cn(
                 'group/line flex items-stretch px-1 whitespace-pre',
-                row.left.kind === 'remove' && 'bg-red-500/8 text-red-700 dark:text-red-300',
+                row.left.kind === 'remove' && 'diff-line-removed',
                 row.left.kind === 'context' && 'text-foreground-secondary',
               )}
             >
@@ -181,7 +181,7 @@ function SplitHunk({ hunk, filePath }: { hunk: DiffHunk; filePath: string }) {
               key={i}
               className={cn(
                 'group/line flex items-stretch px-1 whitespace-pre',
-                row.right.kind === 'add' && 'bg-green-500/8 text-green-700 dark:text-green-300',
+                row.right.kind === 'add' && 'diff-line-added',
                 row.right.kind === 'context' && 'text-foreground-secondary',
               )}
             >
@@ -264,8 +264,8 @@ export function FileDiffView({
         <span className="min-w-0 flex-1 truncate font-mono text-[11px]">{filePath}</span>
         {file && (
           <>
-            <span className="shrink-0 text-[9px] text-green-500/80">+{file.additions}</span>
-            <span className="shrink-0 text-[9px] text-red-500/80">-{file.deletions}</span>
+            <span className="shrink-0 text-[9px] text-[var(--diff-added)]">+{file.additions}</span>
+            <span className="shrink-0 text-[9px] text-[var(--diff-removed)]">-{file.deletions}</span>
           </>
         )}
         <button
@@ -369,7 +369,7 @@ export function ReviewCommitBar({ cwd, onCommitted }: { cwd: string; onCommitted
             onChange={(e) => setMessage(e.target.value)}
           />
           {error && <div className="text-[10px] text-destructive">{error}</div>}
-          {hash && <div className="text-[10px] text-green-600">已提交 {hash.slice(0, 8)}</div>}
+          {hash && <div className="text-[10px] text-[var(--diff-added)]">已提交 {hash.slice(0, 8)}</div>}
           <div className="flex justify-end gap-2">
             <button
               type="button"

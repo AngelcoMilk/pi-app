@@ -2,6 +2,14 @@ import type { i18n as I18n } from 'i18next'
 import { ipcClient } from '@renderer/lib/ipc-client'
 import { useUIStore } from '@renderer/stores/ui-store'
 import type { AsrConfig } from '@shared/asr-types'
+import {
+  type CustomCssOverride,
+  type CustomTheme,
+  normalizeCustomCssOverride,
+  normalizeCustomTheme,
+} from '@shared/custom-theme'
+import { injectCustomCssOverride } from '@renderer/lib/theme/inject-custom-css'
+import { applyCustomTheme } from '@renderer/lib/theme/inject-theme'
 import { normalizeTimelineMaxAutoExpandedTools } from '@shared/timeline-settings'
 import {
   normalizeRightPanelOrder,
@@ -15,6 +23,8 @@ export type LanguageChoice = 'zh' | 'en'
 
 export type SettingsDraft = {
   theme: ThemeChoice
+  customTheme: CustomTheme
+  customCssOverride: CustomCssOverride
   language: LanguageChoice
   autoOpenLastProject: boolean
   autoCheckRegistryUpdates: boolean
@@ -67,6 +77,8 @@ export function asrConfigFromSettingsResponse(raw: AsrConfig): AsrConfig {
 export function draftSignature(d: SettingsDraft): string {
   return JSON.stringify({
     theme: d.theme,
+    customTheme: d.customTheme,
+    customCssOverride: d.customCssOverride,
     language: d.language,
     autoOpenLastProject: d.autoOpenLastProject,
     autoCheckRegistryUpdates: d.autoCheckRegistryUpdates,
@@ -97,6 +109,8 @@ export async function loadSettingsDraftFromDisk(i18nLanguage: string): Promise<S
 
   return {
     theme: normalizeThemeChoice(s.theme),
+    customTheme: normalizeCustomTheme(s.customTheme),
+    customCssOverride: normalizeCustomCssOverride(s.customCssOverride),
     language: normalizeLanguage(s.language, normalizeLanguage(i18nLanguage, 'zh')),
     autoOpenLastProject: s.autoOpenLastProject !== false,
     autoCheckRegistryUpdates: s.autoCheckRegistryUpdates !== false,
@@ -116,7 +130,10 @@ export async function loadSettingsDraftFromDisk(i18nLanguage: string): Promise<S
   }
 }
 
+let appliedThemeChoice: ThemeChoice = 'system'
+
 export function applyThemeToDocument(theme: ThemeChoice): void {
+  appliedThemeChoice = theme
   if (theme === 'dark') document.documentElement.classList.add('dark')
   else if (theme === 'light') document.documentElement.classList.remove('dark')
   else {
@@ -155,14 +172,51 @@ export async function hydrateThemeFromSettings(): Promise<void> {
   applyThemeToDocument(theme)
 }
 
+/**
+ * 自定义主题水合：electron-store 是真源，localStorage 镜像只服务首帧脚本。
+ * 缓存与真源不一致时以真源重算覆盖。
+ */
+export async function hydrateCustomThemeFromSettings(): Promise<void> {
+  const res = await ipcClient
+    .invoke('settings.get', { key: 'customTheme' })
+    .catch(() => ({ settings: {} }))
+  applyCustomTheme(normalizeCustomTheme(res?.settings?.customTheme))
+}
+
+export async function hydrateCustomCssOverrideFromSettings(): Promise<void> {
+  const res = await ipcClient
+    .invoke('settings.get', { key: 'customCssOverride' })
+    .catch(() => ({ settings: {} }))
+  injectCustomCssOverride(normalizeCustomCssOverride(res?.settings?.customCssOverride))
+}
+
+/** system 模式下跟随 OS 明暗切换；返回取消订阅 */
+export function watchSystemTheme(): () => void {
+  const mq = window.matchMedia('(prefers-color-scheme: dark)')
+  const onChange = () => {
+    if (appliedThemeChoice === 'system') {
+      document.documentElement.classList.toggle('dark', mq.matches)
+    }
+  }
+  mq.addEventListener('change', onChange)
+  return () => mq.removeEventListener('change', onChange)
+}
+
 /** 仅界面预览，不写盘 */
 export function previewDraftUi(draft: SettingsDraft, i18n: I18n): void {
   applyThemeToDocument(draft.theme)
+  applyCustomTheme(draft.customTheme)
+  injectCustomCssOverride(draft.customCssOverride)
   if (i18n.language !== draft.language) void i18n.changeLanguage(draft.language)
 }
 
 export async function commitSettingsDraft(draft: SettingsDraft, i18n: I18n): Promise<AsrConfig> {
   await ipcClient.invoke('settings.set', { key: 'theme', value: draft.theme })
+  await ipcClient.invoke('settings.set', {
+    key: 'customTheme',
+    value: draft.customTheme.light || draft.customTheme.dark ? draft.customTheme : null,
+  })
+  await ipcClient.invoke('settings.set', { key: 'customCssOverride', value: draft.customCssOverride })
   await ipcClient.invoke('settings.set', { key: 'language', value: draft.language })
   await ipcClient.invoke('settings.set', { key: 'autoOpenLastProject', value: draft.autoOpenLastProject })
   await ipcClient.invoke('settings.set', { key: 'autoCheckRegistryUpdates', value: draft.autoCheckRegistryUpdates })
@@ -199,6 +253,8 @@ export async function commitSettingsDraft(draft: SettingsDraft, i18n: I18n): Pro
   useUIStore.getState().setTheme(draft.theme)
   useUIStore.getState().setTimelineMaxAutoExpandedTools(draft.timelineMaxAutoExpandedTools)
   applyThemeToDocument(draft.theme)
+  applyCustomTheme(draft.customTheme)
+  injectCustomCssOverride(draft.customCssOverride)
   if (i18n.language !== draft.language) await i18n.changeLanguage(draft.language)
   useUIStore.getState().applyRightPanelRuntime(
     draft.rightPanelCatalog,

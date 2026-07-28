@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import type { AppEvent } from '@shared/app-events'
+import { CUSTOM_THEME_DISABLED_RENDERER_ARGUMENT } from '@shared/custom-theme'
 import { isAllowedIpcChannel } from '@shared/ipc-channels'
 
 const EVENTS_CHANNEL = 'ipc:events'
@@ -10,6 +11,8 @@ const APP_UPDATE_CHANNEL = 'ipc:app-update-available'
 const APP_UPDATE_DOWNLOAD_PROGRESS_CHANNEL = 'ipc:app-update-download-progress'
 
 const api = {
+  customThemeDisabled: process.argv.includes(CUSTOM_THEME_DISABLED_RENDERER_ARGUMENT),
+
   invoke(channel: string, request?: unknown): Promise<unknown> {
     if (!isAllowedIpcChannel(channel)) {
       return Promise.reject(new Error(`IPC channel not allowed: ${channel}`))

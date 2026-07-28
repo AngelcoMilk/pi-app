@@ -22,6 +22,7 @@ import {
   type LanguageChoice,
 } from '@renderer/features/settings/settings-draft'
 import type { AsrConfig } from '@shared/asr-types'
+import type { CustomCssOverride, CustomTheme } from '@shared/custom-theme'
 import { normalizeTimelineMaxAutoExpandedTools } from '@shared/timeline-settings'
 import { setAsrConfigPreview } from '@renderer/lib/asr-config-effective'
 import {
@@ -47,6 +48,8 @@ type SettingsDraftContextValue = {
   loading: boolean
   saving: boolean
   setTheme: (t: ThemeChoice) => void
+  setCustomTheme: (t: CustomTheme) => void
+  setCustomCssOverride: (override: CustomCssOverride) => void
   setLanguage: (l: LanguageChoice) => void
   setAutoOpenLastProject: (v: boolean) => void
   setAutoCheckRegistryUpdates: (v: boolean) => void
@@ -166,7 +169,7 @@ export function SettingsDraftProvider({ children }: { children: ReactNode }) {
     window.dispatchEvent(new CustomEvent('pi-desktop:asr-config-preview', { detail: d.asrConfig }))
     useUIStore.getState().applyRightPanelRuntime(d.rightPanelCatalog, d.rightPanelPrefs, d.rightPanelOrder)
     notifySettingsDirtyChanged()
-  }, [])  
+  }, [])
 
   discardDraftRef.current = discard
 
@@ -232,6 +235,8 @@ export function SettingsDraftProvider({ children }: { children: ReactNode }) {
       loading,
       saving,
       setTheme: (t) => patch((d) => ({ ...d, theme: t })),
+      setCustomTheme: (t) => patch((d) => ({ ...d, customTheme: t })),
+      setCustomCssOverride: (override) => patch((d) => ({ ...d, customCssOverride: override })),
       setLanguage: (l) => patch((d) => ({ ...d, language: l })),
       setAutoOpenLastProject: (v) => patch((d) => ({ ...d, autoOpenLastProject: v })),
       setAutoCheckRegistryUpdates: (v) => patch((d) => ({ ...d, autoCheckRegistryUpdates: v })),

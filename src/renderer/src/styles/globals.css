@@ -11,8 +11,11 @@
     --motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
 
     /* Font tokens (system stack, 参考桌面客户端 rejects Inter for thin-text issue) */
-    --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
-    --font-mono: 'Geist Mono', ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+    /* *-base 为回退栈：自定义主题只把本机字体名前置，不整栈替换 */
+    --font-sans-base: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+    --font-mono-base: 'Geist Mono', ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+    --font-sans: var(--font-sans-base);
+    --font-mono: var(--font-mono-base);
 
     /* ── 参考桌面客户端 AOU Purple brand palette (light) ── */
     --aou-1: #eff0f6;
@@ -53,6 +56,9 @@
     --status-warn: #ff7d00;
     --status-error: #f53f3f;
     --status-idle: #454d5f;
+    /* Diff：review 与 timeline 共用一套加减色 */
+    --diff-added: #059669;
+    --diff-removed: #e11d48;
 
     /* Border */
     --border-base: #e5e6eb;
@@ -206,6 +212,8 @@
     --status-warn: #d29922;
     --status-error: #f85149;
     --status-idle: #9d9d9d;
+    --diff-added: #34d399;
+    --diff-removed: #fb7185;
 
     /* Border — sideBar.border / panel.border */
     --border-base: #2b2b2b;
@@ -1802,6 +1810,14 @@
 
 /* 参考桌面客户端 motion layer (layout.css timings) */
 @layer components {
+  .diff-line-added {
+    background: color-mix(in srgb, var(--diff-added) 8%, transparent);
+    color: var(--diff-added);
+  }
+  .diff-line-removed {
+    background: color-mix(in srgb, var(--diff-removed) 8%, transparent);
+    color: var(--diff-removed);
+  }
   .sider-item-motion {
     transition:
       padding 200ms ease,

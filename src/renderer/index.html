@@ -15,6 +15,24 @@
           var isDark = theme === 'dark'
             || (theme !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
           if (isDark) document.documentElement.classList.add('dark');
+          var customThemeDisabled = window.piDesktop
+            && window.piDesktop.customThemeDisabled === true;
+          if (!customThemeDisabled) {
+            var themeCss = localStorage.getItem('pi-desktop-theme-css');
+            if (themeCss) {
+              var themeStyle = document.createElement('style');
+              themeStyle.id = 'pi-custom-theme';
+              themeStyle.textContent = themeCss;
+              document.head.appendChild(themeStyle);
+            }
+            var customCss = localStorage.getItem('pi-desktop-custom-css');
+            if (customCss) {
+              var customStyle = document.createElement('style');
+              customStyle.id = 'pi-custom-css';
+              customStyle.textContent = customCss;
+              document.head.appendChild(customStyle);
+            }
+          }
         } catch (e) {
           console.warn('[pi-desktop] theme bootstrap failed', e);
         }

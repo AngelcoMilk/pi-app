@@ -29,7 +29,12 @@ import { SidePanelHost } from '@renderer/features/side-panels/side-panel-host'
 import { ExtensionUIHost } from '@renderer/features/extension-ui/extension-ui-host'
 import { AppToaster } from '@renderer/components/app/app-toaster'
 import { markExtensionNotifyAppReady } from '@renderer/lib/extension-notify-policy'
-import { hydrateThemeFromSettings } from '@renderer/features/settings/settings-draft'
+import {
+  hydrateCustomCssOverrideFromSettings,
+  hydrateCustomThemeFromSettings,
+  hydrateThemeFromSettings,
+  watchSystemTheme,
+} from '@renderer/features/settings/settings-draft'
 import { CommandPalette, ShortcutsHelpSheet } from '@renderer/features/shell/command-palette'
 import { EmptyState } from '@renderer/components/ui/empty-state'
 import { AppUpdateHost } from '@renderer/lib/app-update-notify'
@@ -139,7 +144,11 @@ export default function App() {
     useExtensionUIStore.getState().resetForSessionContext()
     void ensureWorkspaceWorkerOnBoot()
     void hydrateThemeFromSettings().catch(() => {})
+    void hydrateCustomThemeFromSettings().catch(() => {})
+    void hydrateCustomCssOverrideFromSettings().catch(() => {})
   }, [])
+
+  useEffect(() => watchSystemTheme(), [])
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => {

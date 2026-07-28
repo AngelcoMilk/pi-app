@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { normalizeFontName } from '@shared/custom-theme'
 
 export const shellOpenPathSchema = z.object({
   path: z.string(),
@@ -117,8 +118,34 @@ export const sdkInstallSchema = z.object({
   version: z.string().min(1),
 })
 
+const hexColorSchema = z.string().regex(/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/)
+const fontNameSchema = z
+  .string()
+  .max(80)
+  .refine((value) => normalizeFontName(value) === value, 'invalid local font name')
+
+const themeVariantSchema = z
+  .object({
+    preset: z.string().nullable(),
+    accent: hexColorSchema,
+    surface: hexColorSchema,
+    ink: hexColorSchema,
+    contrast: z.number().min(0).max(100),
+    fontUi: fontNameSchema.nullable(),
+    fontCode: fontNameSchema.nullable(),
+    translucentSidebar: z.boolean(),
+    diffAdded: hexColorSchema.optional(),
+    diffRemoved: hexColorSchema.optional(),
+  })
+  .strict()
+
 const settingsValueSchemas: Record<string, z.ZodTypeAny> = {
   theme: z.enum(['light', 'dark', 'system']),
+  customTheme: z
+    .object({ light: themeVariantSchema.optional(), dark: themeVariantSchema.optional() })
+    .strict()
+    .nullable(),
+  customCssOverride: z.object({ enabled: z.boolean(), css: z.string() }).strict(),
   language: z.enum(['zh', 'en']),
   currentProject: z.string().nullable(),
   recentProjects: z.array(z.string()),

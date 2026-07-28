@@ -1,5 +1,6 @@
 import Store from 'electron-store'
 import type { AsrConfig } from '@shared/asr-types'
+import type { CustomCssOverride, CustomTheme } from '@shared/custom-theme'
 import { DEFAULT_TIMELINE_MAX_AUTO_EXPANDED_TOOLS } from '@shared/timeline-settings'
 import { bindSecretStoreBacking } from './secret-store'
 
@@ -8,6 +9,10 @@ export interface StoreSchema {
   currentProject: string | null
   windowBounds: { width: number; height: number; x?: number; y?: number } | null
   theme: 'light' | 'dark' | 'system'
+  /** 自定义主题（浅/深各一槽，槽位缺省 = 未定制）；null = 完全未定制 */
+  customTheme: CustomTheme | null
+  /** 结构化主题之后的自由 CSS 覆盖层 */
+  customCssOverride: CustomCssOverride
   panelWidths: { sidebar: number; right: number } | null
   extensionOverrides: Record<string, boolean>
   /** Skill 启用：key 为 skillStorageKey，false=禁用，缺省=启用 */
@@ -54,6 +59,8 @@ const store = new Store<StoreSchema>({
     currentProject: null,
     windowBounds: null,
     theme: 'system',
+    customTheme: null,
+    customCssOverride: { enabled: false, css: '' },
     panelWidths: null,
     extensionOverrides: {},
     skillOverrides: {},

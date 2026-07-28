@@ -22,6 +22,7 @@ function resolveWindowIcon() {
 }
 import { is } from '@electron-toolkit/utils'
 import { configStore } from './config-store'
+import { customThemeRendererArgument } from './custom-theme-startup'
 import { workerManager } from './worker-manager'
 
 const MIN_W = 900
@@ -104,6 +105,7 @@ export function createWindow(): BrowserWindow {
     icon: resolveWindowIcon(),
     webPreferences: {
       preload: join(__dirname, '../preload/index.cjs'),
+      additionalArguments: [customThemeRendererArgument()],
       sandbox: readRendererSandboxEnabled(),
       contextIsolation: true,
       nodeIntegration: false,

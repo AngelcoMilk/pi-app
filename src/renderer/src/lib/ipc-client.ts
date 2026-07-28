@@ -5,6 +5,7 @@ import type { WorkerExitInfo } from '@renderer/lib/worker-exit-runtime'
 declare global {
   interface Window {
     piDesktop?: {
+      readonly customThemeDisabled?: boolean
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       invoke: (channel: string, request?: any) => Promise<any>
       getPathForFile: (file: File) => string

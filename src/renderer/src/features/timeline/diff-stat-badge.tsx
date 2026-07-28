@@ -21,10 +21,10 @@ export function DiffStatBadge({
       )}
     >
       {additions > 0 && (
-        <span className="text-emerald-600 dark:text-emerald-400">+{additions}</span>
+        <span className="text-[var(--diff-added)]">+{additions}</span>
       )}
       {deletions > 0 && (
-        <span className="text-rose-600 dark:text-rose-400">-{deletions}</span>
+        <span className="text-[var(--diff-removed)]">-{deletions}</span>
       )}
     </span>
   )
