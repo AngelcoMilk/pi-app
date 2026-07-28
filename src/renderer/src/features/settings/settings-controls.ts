@@ -9,6 +9,12 @@ export const selectCls =
 export const numberInputCls =
   'settings-field-focus w-[5.5rem] rounded-md border border-border bg-background px-2.5 py-1 text-right font-mono text-sm text-foreground'
 
+export const textareaCls =
+  'settings-field-focus w-full resize-y rounded-md border border-border bg-background px-3 py-2 font-mono text-sm leading-relaxed text-foreground'
+
+export const btnCompact =
+  'settings-chip inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-40'
+
 export const btnOutline =
   'settings-chip rounded-md border border-border bg-background px-2.5 py-1.5 text-sm transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-40'
 

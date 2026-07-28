@@ -6,6 +6,7 @@ import { showAppUpdateDialog } from '@renderer/lib/app-update-notify'
 import type { AppUpdateAvailableInfo } from '@shared/app-update'
 import { useSettingsDraft } from '@renderer/features/settings/settings-draft-context'
 import { PiSettingsPanel } from '@renderer/features/settings/pi-settings-panel'
+import { AppearanceThemeEditor } from '@renderer/features/settings/appearance-theme-editor'
 import { SettingsPageHeader } from '@renderer/features/settings/settings-shell'
 import { SettingRow, SettingsSection } from '@renderer/features/settings/settings-page-shared'
 import { btnOutline, numberInputCls } from '@renderer/features/settings/settings-controls'
@@ -239,12 +240,12 @@ export function AppearanceSettings() {
   ]
 
   return (
-    <div className="space-y-8">
+    <div className="flex flex-col gap-8">
       <SettingsPageHeader title={t('settings:appearance.title')} description={t('settings:appearance.description')} />
 
       <SettingsSection title={t('settings:appearance.themeTitle')}>
         <SettingRow label={t('settings:appearance.themeLabel')} description={t('settings:appearance.themeDesc')}>
-          <div className="flex gap-1.5">
+          <div className="flex flex-wrap gap-1.5">
             {themes.map(({ key, icon: Icon }) => (
               <button
                 key={key}
@@ -264,6 +265,8 @@ export function AppearanceSettings() {
           </div>
         </SettingRow>
       </SettingsSection>
+
+      <AppearanceThemeEditor />
 
       <SettingsSection title={t('settings:appearance.timeline')}>
         <SettingRow
