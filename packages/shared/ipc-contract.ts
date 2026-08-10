@@ -95,8 +95,8 @@ export interface PromptSteerRequest { sessionId: string; text: string }
 export interface PromptSteerResponse { steered: boolean }
 export interface PromptFollowUpRequest { sessionId: string; text: string }
 export interface PromptFollowUpResponse { messageId: string }
-export interface PromptAbortRequest { sessionId: string }
-export interface PromptAbortResponse { aborted: boolean }
+export interface PromptAbortRequest { sessionId: string; sessionFile: string }
+export interface PromptAbortResponse { aborted: boolean; ignored?: boolean; reason?: string; noWorker?: boolean }
 
 // ── Model ──
 export interface ModelInfo {

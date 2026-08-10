@@ -135,8 +135,43 @@ describe('session-worker-sync', () => {
         runState: { status: 'idle' },
         streamingAssistantId: 'opt-asst-2',
         optimisticPendingUserText: null,
+        sessionRuntimeRunning: { '/b.jsonl': true },
       }),
     ).toBe(true)
+
+    expect(
+      composerTurnActive({
+        historySessionFile: '/b.jsonl',
+        workerLiveSnapshot: { sessionId: 's1', sessionFile: '/a.jsonl', status: 'running' },
+        runState: { status: 'running' },
+        streamingAssistantId: 'stale-from-a',
+        optimisticPendingUserText: null,
+        sessionRuntimeRunning: { '/a.jsonl': true },
+      }),
+    ).toBe(false)
+
+    expect(
+      composerTurnActive({
+        historySessionFile: '/b.jsonl',
+        workerLiveSnapshot: { sessionId: 's2', sessionFile: '/b.jsonl', status: 'idle' },
+        runState: { status: 'idle' },
+        streamingAssistantId: 'stale-from-a',
+        optimisticPendingUserText: null,
+        sessionRuntimeRunning: { '/a.jsonl': true },
+      }),
+    ).toBe(false)
+
+    expect(
+      composerTurnActive({
+        historySessionFile: null,
+        workerLiveSnapshot: { sessionId: 's1', sessionFile: '/a.jsonl', status: 'running' },
+        runState: { status: 'running' },
+        streamingAssistantId: 'stale-from-a',
+        optimisticPendingUserText: 'new session draft',
+        agentTurnBootstrapping: true,
+        sessionRuntimeRunning: { '/a.jsonl': true },
+      }),
+    ).toBe(false)
   })
 
   it('fetchWorkerLiveSnapshot does not mark requested idle session as running from foreign reply', async () => {
@@ -161,10 +196,13 @@ describe('session-worker-sync', () => {
   })
 
   it('keeps worker snapshot idle during abort hold', () => {
-    markAbortUiHold()
+    markAbortUiHold('/a.jsonl')
     expect(
       normalizeWorkerLiveSnapshotForView({ sessionId: 's1', sessionFile: '/a.jsonl', status: 'running' }).status,
     ).toBe('idle')
+    expect(
+      normalizeWorkerLiveSnapshotForView({ sessionId: 's2', sessionFile: '/b.jsonl', status: 'running' }).status,
+    ).toBe('running')
   })
 
   it('syncs runState to running only when view matches worker file', () => {
@@ -204,5 +242,62 @@ describe('session-worker-sync', () => {
     )
     expect(snap).toEqual({ sessionId: null, sessionFile: '/b.jsonl', status: 'idle' })
     expect(runStatus).toBeNull()
+  })
+
+  it('reconciles stale runtime UI when the bound worker is authoritatively idle', () => {
+    const reconcileSessionRuntimeIdle = vi.fn()
+    applyLiveSnapshotToView(
+      '/b.jsonl',
+      { sessionId: 's2', sessionFile: '/b.jsonl', status: 'idle' },
+      {
+        historySessionFile: '/b.jsonl',
+        runState: { status: 'running', toolCount: 0, errorCount: 0 },
+        setWorkerLiveSnapshot: vi.fn(),
+        setRunState: vi.fn(),
+        reconcileSessionRuntimeIdle,
+      } as Parameters<typeof applyLiveSnapshotToView>[2],
+    )
+
+    expect(reconcileSessionRuntimeIdle).toHaveBeenCalledWith('/b.jsonl')
+  })
+
+  it('ignores an idle poll that races ahead of the first run event', () => {
+    const setWorkerLiveSnapshot = vi.fn()
+    const setRunState = vi.fn()
+    const reconcileSessionRuntimeIdle = vi.fn()
+    applyLiveSnapshotToView(
+      '/b.jsonl',
+      { sessionId: 's2', sessionFile: '/b.jsonl', status: 'idle' },
+      {
+        historySessionFile: '/b.jsonl',
+        runState: { status: 'running', toolCount: 0, errorCount: 0 },
+        agentTurnBootstrapping: true,
+        setWorkerLiveSnapshot,
+        setRunState,
+        reconcileSessionRuntimeIdle,
+      },
+    )
+
+    expect(setWorkerLiveSnapshot).not.toHaveBeenCalled()
+    expect(setRunState).not.toHaveBeenCalled()
+    expect(reconcileSessionRuntimeIdle).not.toHaveBeenCalled()
+  })
+
+  it('accepts idle after the worker assigned a run id', () => {
+    const reconcileSessionRuntimeIdle = vi.fn()
+    applyLiveSnapshotToView(
+      '/b.jsonl',
+      { sessionId: 's2', sessionFile: '/b.jsonl', status: 'idle' },
+      {
+        historySessionFile: '/b.jsonl',
+        runState: { status: 'running', activeRunId: 'run-b', toolCount: 0, errorCount: 0 },
+        agentTurnBootstrapping: true,
+        setWorkerLiveSnapshot: vi.fn(),
+        setRunState: vi.fn(),
+        reconcileSessionRuntimeIdle,
+      },
+    )
+
+    expect(reconcileSessionRuntimeIdle).toHaveBeenCalledWith('/b.jsonl')
   })
 })

@@ -82,7 +82,9 @@ export function selectSessionChrome(input: SessionChromeInput): SessionChromeVie
     ? normalizeSessionFileKey(input.historySessionFile) || input.historySessionFile
     : null
   const abortHold =
-    input.abortHoldActive !== undefined ? input.abortHoldActive : isAbortUiHoldActive()
+    input.abortHoldActive !== undefined
+      ? input.abortHoldActive
+      : isAbortUiHoldActive(input.historySessionFile)
 
   const turnActive = composerTurnActive({
     historySessionFile: input.historySessionFile,
