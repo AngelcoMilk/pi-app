@@ -703,9 +703,15 @@ export class WorkerManager {
     const r = await this.request('getCommands')
     return { commands: (r.commands as WorkerCommandInfo[]) || [], hasSession: !!r.hasSession }
   }
-  async getSessionContextPreview(): Promise<WorkerContextPreview> {
-    const r = await this.request('getSessionContextPreview')
-    return (r.preview as WorkerContextPreview) || null
+  async getSessionContextPreview(sessionFile: string): Promise<WorkerContextPreview> {
+    const sk = normalizeSessionKey(sessionFile)
+    if (!sk) return null
+    const slot = this.pool.get(sk)
+    if (!slot || slot.stopping) return null
+    const r = await this.requestOnSlot(slot, 'getSessionContextPreview', { sessionFile: sk })
+    const preview = (r.preview as WorkerContextPreview) || null
+    if (!preview) return null
+    return { ...preview, sessionFile: slot.sessionFile || sk }
   }
   async getSkillsList(): Promise<WorkerSkillInfo[]> {
     const r = await this.request('getSkillsList')

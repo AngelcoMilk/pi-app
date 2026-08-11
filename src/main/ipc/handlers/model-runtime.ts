@@ -4,6 +4,8 @@ import { configStore } from '../../config-store'
 import { isSandboxWorkspacePath } from '../../sandbox-workspaces'
 import { readModelsConfigRaw, modelsCatalogFromConfig } from '../../pi-models-json'
 import { getActiveSdkModule } from '../sdk-session'
+import { getSessionContextPreviewFromDisk } from '../../session-context-preview'
+import { getSessionLeafOverride } from '../../session-leaf-override'
 import {
   listAvailableModelsWithSdk,
   listCatalogModelsWithSdk,
@@ -113,10 +115,24 @@ export function registerModelRuntimeHandlers(): void {
     return { state: await workerManager.getState() }
   })
 
-  registerHandler('ipc:context.preview', async () => {
-    if (!workerManager.isRunning) return { preview: null }
+  registerHandler('ipc:context.preview', async (req) => {
+    const sessionFile = String(req?.sessionFile || '').trim()
+    if (!sessionFile) return { preview: null }
+    if (workerManager.isRunning) {
+      try {
+        const preview = await workerManager.getSessionContextPreview(sessionFile)
+        if (preview) return { preview }
+      } catch (e) {
+        console.warn('[IPC] live context.preview failed, using disk:', e)
+      }
+    }
     try {
-      return { preview: await workerManager.getSessionContextPreview() }
+      return {
+        preview: await getSessionContextPreviewFromDisk(
+          sessionFile,
+          getSessionLeafOverride(sessionFile),
+        ),
+      }
     } catch (e) {
       console.error('[IPC] context.preview failed:', e)
       return { preview: null }
