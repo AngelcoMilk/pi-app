@@ -6,7 +6,6 @@ describe('buildSessionContextPreview', () => {
     const preview = buildSessionContextPreview({
       sessionId: 'session-a',
       sessionFile: '/sessions/a.jsonl',
-      systemPrompt: 'system',
       messages: [
         { role: 'user', content: 'hello' },
         { role: 'assistant', content: [{ type: 'text', text: 'world' }] },
@@ -19,9 +18,8 @@ describe('buildSessionContextPreview', () => {
       sessionId: 'session-a',
       sessionFile: '/sessions/a.jsonl',
       messageCount: 4,
-      estimatedChars: 29,
+      estimatedChars: 23,
       roleBreakdown: [
-        { role: 'system', chars: 6 },
         { role: 'user', chars: 5 },
         { role: 'assistant', chars: 5 },
         { role: 'tool', chars: 6 },
@@ -29,7 +27,6 @@ describe('buildSessionContextPreview', () => {
       ],
     }))
     expect(preview.segments.map((segment) => segment.role)).toEqual([
-      'system',
       'user',
       'assistant',
       'toolResult',

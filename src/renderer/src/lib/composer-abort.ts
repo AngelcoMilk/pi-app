@@ -29,11 +29,7 @@ export async function abortAgentTurn(opts?: {
     !composerTurnActive({
       historySessionFile: sessionFile,
       workerLiveSnapshot: store.workerLiveSnapshot,
-      runState: store.runState,
-      streamingAssistantId: store.streamingAssistantId,
-      optimisticPendingUserText: store.optimisticPendingUserText,
       sessionRuntimeRunning: store.sessionRuntimeRunning,
-      agentTurnBootstrapping: store.agentTurnBootstrapping,
     })
   )
     return

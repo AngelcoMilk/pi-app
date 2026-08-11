@@ -89,11 +89,7 @@ export function selectSessionChrome(input: SessionChromeInput): SessionChromeVie
   const turnActive = composerTurnActive({
     historySessionFile: input.historySessionFile,
     workerLiveSnapshot: input.workerLiveSnapshot,
-    runState: input.runState,
-    streamingAssistantId: input.streamingAssistantId,
-    optimisticPendingUserText: input.optimisticPendingUserText,
     sessionRuntimeRunning: input.sessionRuntimeRunning,
-    agentTurnBootstrapping: input.agentTurnBootstrapping,
   })
 
   // Abort hold always projects stopping (even after local markers cleared by applyComposerAbortUi).

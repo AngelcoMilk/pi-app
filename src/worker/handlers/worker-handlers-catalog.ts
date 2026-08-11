@@ -96,7 +96,6 @@ export async function handleGetsessioncontextpreview(msg: WorkerIncomingMessage,
             preview: buildSessionContextPreview({
               sessionId: st.currentSessionId,
               sessionFile: st.session?.sessionFile || String(msg.sessionFile || ''),
-              systemPrompt: st.session?.systemPrompt,
               messages: st.session?.messages,
             }),
           })

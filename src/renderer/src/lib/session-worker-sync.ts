@@ -124,11 +124,7 @@ export function canAbortWorkerTurn(
 export function composerTurnActive(input: {
   historySessionFile: string | null
   workerLiveSnapshot: WorkerLiveSnapshot
-  runState: { status: string }
-  streamingAssistantId: string | null
-  optimisticPendingUserText: string | null
   sessionRuntimeRunning?: Record<string, boolean> | null
-  agentTurnBootstrapping?: boolean
 }): boolean {
   const viewFile = input.historySessionFile
   if (!viewFile) return false

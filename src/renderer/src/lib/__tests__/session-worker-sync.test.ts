@@ -66,9 +66,6 @@ describe('session-worker-sync', () => {
       composerTurnActive({
         historySessionFile: '/a.jsonl',
         workerLiveSnapshot: { sessionId: 's1', sessionFile: '/a.jsonl', status: 'running' },
-        runState: { status: 'running' },
-        streamingAssistantId: null,
-        optimisticPendingUserText: null,
       }),
     ).toBe(true)
 
@@ -76,9 +73,6 @@ describe('session-worker-sync', () => {
       composerTurnActive({
         historySessionFile: '/b.jsonl',
         workerLiveSnapshot: { sessionId: 's1', sessionFile: '/a.jsonl', status: 'running' },
-        runState: { status: 'running' },
-        streamingAssistantId: null,
-        optimisticPendingUserText: null,
         sessionRuntimeRunning: { '/a.jsonl': true },
       }),
     ).toBe(false)
@@ -87,9 +81,6 @@ describe('session-worker-sync', () => {
       composerTurnActive({
         historySessionFile: '/b.jsonl',
         workerLiveSnapshot: { sessionId: 's2', sessionFile: '/b.jsonl', status: 'idle' },
-        runState: { status: 'idle' },
-        streamingAssistantId: null,
-        optimisticPendingUserText: null,
         sessionRuntimeRunning: { '/b.jsonl': true },
       }),
     ).toBe(true)
@@ -98,43 +89,31 @@ describe('session-worker-sync', () => {
       composerTurnActive({
         historySessionFile: '/a.jsonl',
         workerLiveSnapshot: { sessionId: 's1', sessionFile: '/a.jsonl', status: 'idle' },
-        runState: { status: 'idle' },
-        streamingAssistantId: null,
-        optimisticPendingUserText: null,
       }),
     ).toBe(false)
 
-    // residual global runState.running after switch to idle session — NEVER trust alone
+    // A foreign session-scoped signal must not activate the current view.
     expect(
       composerTurnActive({
         historySessionFile: '/b.jsonl',
         workerLiveSnapshot: { sessionId: 's2', sessionFile: '/b.jsonl', status: 'idle' },
-        runState: { status: 'running' },
-        streamingAssistantId: null,
-        optimisticPendingUserText: null,
         sessionRuntimeRunning: { '/a.jsonl': true },
       }),
     ).toBe(false)
 
-    // residual runState + unscoped worker snap running — still false for idle view B
+    // An unscoped worker snap is not enough to activate a session view.
     expect(
       composerTurnActive({
         historySessionFile: '/b.jsonl',
         workerLiveSnapshot: { sessionId: null, sessionFile: null, status: 'running' },
-        runState: { status: 'running' },
-        streamingAssistantId: null,
-        optimisticPendingUserText: null,
       }),
     ).toBe(false)
 
-    // local streaming markers still count for current view
+    // The current session's runtime map remains authoritative.
     expect(
       composerTurnActive({
         historySessionFile: '/b.jsonl',
         workerLiveSnapshot: { sessionId: 's2', sessionFile: '/b.jsonl', status: 'idle' },
-        runState: { status: 'idle' },
-        streamingAssistantId: 'opt-asst-2',
-        optimisticPendingUserText: null,
         sessionRuntimeRunning: { '/b.jsonl': true },
       }),
     ).toBe(true)
@@ -143,9 +122,6 @@ describe('session-worker-sync', () => {
       composerTurnActive({
         historySessionFile: '/b.jsonl',
         workerLiveSnapshot: { sessionId: 's1', sessionFile: '/a.jsonl', status: 'running' },
-        runState: { status: 'running' },
-        streamingAssistantId: 'stale-from-a',
-        optimisticPendingUserText: null,
         sessionRuntimeRunning: { '/a.jsonl': true },
       }),
     ).toBe(false)
@@ -154,9 +130,6 @@ describe('session-worker-sync', () => {
       composerTurnActive({
         historySessionFile: '/b.jsonl',
         workerLiveSnapshot: { sessionId: 's2', sessionFile: '/b.jsonl', status: 'idle' },
-        runState: { status: 'idle' },
-        streamingAssistantId: 'stale-from-a',
-        optimisticPendingUserText: null,
         sessionRuntimeRunning: { '/a.jsonl': true },
       }),
     ).toBe(false)
@@ -165,10 +138,6 @@ describe('session-worker-sync', () => {
       composerTurnActive({
         historySessionFile: null,
         workerLiveSnapshot: { sessionId: 's1', sessionFile: '/a.jsonl', status: 'running' },
-        runState: { status: 'running' },
-        streamingAssistantId: 'stale-from-a',
-        optimisticPendingUserText: 'new session draft',
-        agentTurnBootstrapping: true,
         sessionRuntimeRunning: { '/a.jsonl': true },
       }),
     ).toBe(false)

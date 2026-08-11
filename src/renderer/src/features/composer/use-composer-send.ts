@@ -54,11 +54,7 @@ export function useComposerSend(opts: {
       const running = composerTurnActive({
         historySessionFile: store.historySessionFile,
         workerLiveSnapshot: store.workerLiveSnapshot,
-        runState: store.runState,
-        streamingAssistantId: store.streamingAssistantId,
-        optimisticPendingUserText: store.optimisticPendingUserText,
         sessionRuntimeRunning: store.sessionRuntimeRunning,
-        agentTurnBootstrapping: store.agentTurnBootstrapping,
       })
       if (displayText.trim()) inputHistory.recordSent(displayText.trim())
       const { hideAllDelayedTooltips } = await import('./delayed-tooltip')

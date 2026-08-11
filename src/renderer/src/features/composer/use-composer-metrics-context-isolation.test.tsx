@@ -50,6 +50,7 @@ describe('useComposerMetrics context isolation', () => {
     await waitFor(() => {
       expect(ipcClient.invoke).toHaveBeenCalledWith('context.preview', {
         sessionFile: '/sessions/a.jsonl',
+        workspaceId: '/workspace',
       })
     })
   })
@@ -84,6 +85,7 @@ describe('useComposerMetrics context isolation', () => {
     await waitFor(() => expect(result.current.contextPreview).toBeNull())
     expect(ipcClient.invoke).not.toHaveBeenCalledWith('context.preview', {
       sessionFile: '/sessions/b.jsonl',
+      workspaceId: '/workspace',
     })
   })
 

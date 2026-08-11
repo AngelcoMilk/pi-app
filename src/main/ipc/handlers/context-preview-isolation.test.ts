@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   getSessionContextPreview: vi.fn(),
   sessionOpen: vi.fn(),
   getSessionLeafOverride: vi.fn(),
+  authorizeTrustedSessionFile: vi.fn(),
 }))
 
 vi.mock('../registry', () => ({
@@ -12,6 +13,15 @@ vi.mock('../registry', () => ({
     channel: string,
     handler: (request?: Record<string, unknown>) => Promise<unknown>,
   ) => mocks.handlers.set(channel, handler),
+  registerHandlerWithSchema: (
+    channel: string,
+    schema: { safeParse: (request: unknown) => { success: boolean; data?: Record<string, unknown> } },
+    handler: (request: Record<string, unknown>) => Promise<unknown>,
+  ) => mocks.handlers.set(channel, async (request) => {
+    const parsed = schema.safeParse(request)
+    if (!parsed.success) throw new Error(`Invalid IPC input for ${channel}`)
+    return handler(parsed.data || {})
+  }),
 }))
 
 vi.mock('../../worker-manager', () => ({
@@ -46,6 +56,10 @@ vi.mock('../../session-leaf-override', () => ({
   getSessionLeafOverride: mocks.getSessionLeafOverride,
 }))
 
+vi.mock('../../trusted-workspace', () => ({
+  authorizeTrustedSessionFile: mocks.authorizeTrustedSessionFile,
+}))
+
 vi.mock('../sdk-session', () => ({
   getActiveSdkModule: vi.fn(async () => ({
     SessionManager: { open: mocks.sessionOpen },
@@ -61,6 +75,12 @@ describe('context.preview session isolation', () => {
     mocks.getSessionContextPreview.mockReset()
     mocks.sessionOpen.mockReset()
     mocks.getSessionLeafOverride.mockReset()
+    mocks.authorizeTrustedSessionFile.mockReset()
+    mocks.authorizeTrustedSessionFile.mockImplementation((_workspaceId, sessionFile) => ({
+      ok: true,
+      cwd: '/workspace',
+      sessionFile,
+    }))
     ;(workerManager as { isRunning: boolean }).isRunning = false
     registerModelRuntimeHandlers()
   })
@@ -74,9 +94,13 @@ describe('context.preview session isolation', () => {
       estimatedChars: requested ? 22 : 11,
     }))
 
-    const result = await mocks.handlers.get('ipc:context.preview')!({ sessionFile })
+    const result = await mocks.handlers.get('ipc:context.preview')!({
+      sessionFile,
+      workspaceId: '/workspace',
+    })
 
     expect(mocks.getSessionContextPreview).toHaveBeenCalledWith(sessionFile)
+    expect(mocks.authorizeTrustedSessionFile).not.toHaveBeenCalled()
     expect(result).toEqual({
       preview: expect.objectContaining({ sessionFile, estimatedChars: 22 }),
     })
@@ -96,8 +120,12 @@ describe('context.preview session isolation', () => {
       }),
     })
 
-    const result = await mocks.handlers.get('ipc:context.preview')!({ sessionFile })
+    const result = await mocks.handlers.get('ipc:context.preview')!({
+      sessionFile,
+      workspaceId: '/workspace',
+    })
 
+    expect(mocks.authorizeTrustedSessionFile).toHaveBeenCalledWith('/workspace', sessionFile)
     expect(branch).toHaveBeenCalledWith('rewound-leaf')
     expect(result).toEqual({
       preview: expect.objectContaining({
@@ -116,9 +144,22 @@ describe('context.preview session isolation', () => {
       estimatedChars: 11,
     })
 
-    const result = await mocks.handlers.get('ipc:context.preview')!()
+    await expect(mocks.handlers.get('ipc:context.preview')!()).rejects.toThrow('Invalid IPC input')
+    expect(mocks.getSessionContextPreview).not.toHaveBeenCalled()
+  })
+
+  it('does not open a session file outside the active trusted workspace', async () => {
+    mocks.authorizeTrustedSessionFile.mockReturnValue({
+      ok: false,
+      error: 'session_workspace_mismatch',
+    })
+
+    const result = await mocks.handlers.get('ipc:context.preview')!({
+      sessionFile: '/other/session.jsonl',
+      workspaceId: '/workspace',
+    })
 
     expect(result).toEqual({ preview: null })
-    expect(mocks.getSessionContextPreview).not.toHaveBeenCalled()
+    expect(mocks.sessionOpen).not.toHaveBeenCalled()
   })
 })

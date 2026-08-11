@@ -26,7 +26,6 @@ export type SessionContextPreview = {
 type BuildPreviewInput = {
   sessionId?: string | null
   sessionFile: string
-  systemPrompt?: string | null
   messages?: readonly PiSessionMessage[] | null
 }
 
@@ -70,9 +69,6 @@ export function buildSessionContextPreview(input: BuildPreviewInput): SessionCon
       label,
     })
   }
-
-  const systemPrompt = input.systemPrompt || ''
-  if (systemPrompt) append('system', systemPrompt, 'system')
 
   const messages = input.messages || []
   for (const message of messages) {

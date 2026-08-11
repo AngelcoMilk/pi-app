@@ -23,7 +23,10 @@ export function useSessionContextPreview(options?: { enabled?: boolean }) {
     const requestedFile = sessionFile
     setLoading(true)
     try {
-      const response = await ipcClient.invoke('context.preview', { sessionFile: requestedFile })
+      const response = await ipcClient.invoke('context.preview', {
+        sessionFile: requestedFile,
+        workspaceId: workspace,
+      })
       if (requestId !== requestIdRef.current) return
       const next = (response?.preview || null) as SessionContextPreview | null
       setPreview(next && sessionFilesEqual(next.sessionFile, requestedFile) ? next : null)
