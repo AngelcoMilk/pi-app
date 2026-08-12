@@ -58,6 +58,7 @@ function fakeSlot(poolKey: string, cwd: string, active: boolean, lastFg = Date.n
     initRejecter: null,
     initPromise: null,
     agentTurnActive: active,
+    pendingExtensionUiCount: 0,
     lastIdleAt: Date.now(),
     lastForegroundAt: lastFg,
     sdkFallback: false,
@@ -325,12 +326,14 @@ describe('session-scoped RPC routing', () => {
     backgroundSlot.worker = backgroundTransport
     backgroundTransport.postMessage = vi.fn((message: { requestId?: string }) => {
       queueMicrotask(() => {
-        backgroundTransport.emitMessage({
-          type: 'queueCleared',
-          requestId: message.requestId,
-          steering: [],
-          followUp: [],
-        } as WorkerResponsePayload)
+        if (message.requestId) {
+          backgroundTransport.emitMessage({
+            type: 'queueCleared',
+            requestId: message.requestId,
+            steering: [],
+            followUp: [],
+          } as WorkerResponsePayload)
+        }
       })
     })
     attachWorkerHandlers(backgroundSlot, backgroundSlot.worker, {
@@ -349,12 +352,35 @@ describe('session-scoped RPC routing', () => {
 
     await manager.clearPromptQueue('/s/b')
     await manager.loadSession('/s/b', { cwd: '/w' })
-    manager.respondExtensionUI({ id: 'foreground-response', confirmed: true })
-
-    expect(foregroundProcess.postMessage).toHaveBeenCalledWith({
-      type: 'extension-ui-response',
-      response: { id: 'foreground-response', confirmed: true },
+    const extensionUI = (manager as unknown as { extensionUI: {
+      handleRequest: (slot: WorkerSlot, sessionFile: string, request: {
+        id: string
+        method: 'confirm'
+        title: string
+        message: string
+      }) => void
+    } }).extensionUI
+    extensionUI.handleRequest(backgroundSlot, backgroundKey, {
+      id: 'background-response',
+      method: 'confirm',
+      title: 'Background',
+      message: 'Answer background',
     })
+    ;(backgroundTransport.postMessage as ReturnType<typeof vi.fn>).mockImplementation((message: { requestId?: string; type?: string }) => {
+      queueMicrotask(() => {
+        backgroundTransport.emitMessage({
+          type: 'extension-ui-response-done',
+          requestId: message.requestId,
+          handled: true,
+        } as WorkerResponsePayload)
+      })
+    })
+    await expect(manager.respondExtensionUI({ id: 'background-response', confirmed: true })).resolves.toEqual({ ok: true })
+
+    expect(foregroundProcess.postMessage).not.toHaveBeenCalled()
+    expect(backgroundTransport.postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'extension-ui-response', response: { id: 'background-response', confirmed: true } }),
+    )
     expect(internals.foregroundPoolKey).toBe(foregroundKey)
 
     expect(manager.focusExistingSession('/s/b')).toBe(true)

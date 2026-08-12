@@ -1,5 +1,10 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import type { AppEvent } from '@shared/app-events'
+import type {
+  ExtensionUIDismissEvent,
+  ExtensionUIPendingRequest,
+  ExtensionUIRequest,
+} from '@shared/extension-ui'
 import { CUSTOM_THEME_DISABLED_RENDERER_ARGUMENT } from '@shared/custom-theme'
 import { isAllowedIpcChannel } from '@shared/ipc-channels'
 
@@ -56,15 +61,19 @@ const api = {
     return () => ipcRenderer.off('ipc:auto-opened', handler)
   },
 
-  onExtensionUIRequest(callback: (request: unknown) => void): () => void {
-    const handler = (_event: unknown, data: unknown): void => callback(data)
+  onExtensionUIRequest(
+    callback: (request: ExtensionUIPendingRequest | Extract<ExtensionUIRequest, { method: 'notify' }>) => void,
+  ): () => void {
+    const handler = (
+      _event: unknown,
+      data: ExtensionUIPendingRequest | Extract<ExtensionUIRequest, { method: 'notify' }>,
+    ): void => callback(data)
     ipcRenderer.on(EXT_UI_CHANNEL, handler)
     return () => ipcRenderer.off(EXT_UI_CHANNEL, handler)
   },
 
-  onExtensionUIDismiss(callback: (payload: { type: string; id?: string; reason?: string }) => void): () => void {
-    const handler = (_event: unknown, data: { type: string; id?: string; reason?: string }): void =>
-      callback(data)
+  onExtensionUIDismiss(callback: (payload: ExtensionUIDismissEvent) => void): () => void {
+    const handler = (_event: unknown, data: ExtensionUIDismissEvent): void => callback(data)
     ipcRenderer.on(EXT_UI_DISMISS_CHANNEL, handler)
     return () => ipcRenderer.off(EXT_UI_DISMISS_CHANNEL, handler)
   },

@@ -138,7 +138,7 @@ function ToolCallRowImpl({
             className="ml-1 shrink-0 rounded-sm px-1.5 py-0.5 text-[11px] timeline-text-secondary hover:bg-[var(--bg-hover)]"
             onClick={(event) => {
               event.stopPropagation()
-              useExtensionUIStore.getState().resumeSuspended()
+              useExtensionUIStore.getState().resumeSuspended(item.extensionUiRequestId)
             }}
           >
             {t('timeline:continueAnswering')}

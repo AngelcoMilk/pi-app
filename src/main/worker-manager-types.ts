@@ -26,6 +26,8 @@ export type WorkerSlot = {
   initRejecter: ((e: Error) => void) | null
   initPromise: Promise<WorkerInitResult> | null
   agentTurnActive: boolean
+  /** Pending interactive ExtensionUI requests lease this worker slot. */
+  pendingExtensionUiCount: number
   /** Last time turn became idle (ms); used for idle TTL eviction */
   lastIdleAt: number
   /** Last time this slot was foreground (ms) */

@@ -12,7 +12,6 @@ import {
 import { useUIStore } from '@renderer/stores/ui-store'
 import {
   clearExtensionToolRowFlags,
-  reconcileStaleInteractiveToolRows,
 } from '@renderer/lib/extension-ui-tool-sync'
 
 
@@ -23,10 +22,17 @@ function respond(payload: {
   cancelled?: boolean
   result?: unknown
 }) {
-  ipcClient.invoke('extension.respondUI', payload).catch(() => {})
+  void ipcClient
+    .invoke('extension.respondUI', payload)
+    .then((result) => {
+      if (!result.ok) toast.error('扩展请求未被 Worker 接收，请重试')
+    })
+    .catch(() => toast.error('扩展请求发送失败，请重试'))
 }
 
-function findToolContextForUi(): { toolCallId?: string; toolName?: string; timelineItemId?: string } {
+function findToolContextForUi(
+  requestId?: string,
+): { toolCallId?: string; toolName?: string; timelineItemId?: string } {
   const items = useUIStore.getState().timelineItems
   for (let i = items.length - 1; i >= 0; i--) {
     const it = items[i]
@@ -39,7 +45,9 @@ function findToolContextForUi(): { toolCallId?: string; toolName?: string; timel
       }
     }
   }
-  const suspended = useExtensionUIStore.getState().suspended
+  const suspended = requestId
+    ? useExtensionUIStore.getState().suspendedById[requestId]
+    : Object.values(useExtensionUIStore.getState().suspendedById)[0]
   if (suspended?.timelineItemId) {
     return {
       toolCallId: suspended.toolCallId,
@@ -66,15 +74,12 @@ function suspendActiveDialog() {
 export function ExtensionUIHost() {
   const { t } = useTranslation()
   const pending = useExtensionUIStore((s) => s.activePending)
-  const clearAfterRespond = useExtensionUIStore((s) => s.clearAfterRespond)
   const [inputValue, setInputValue] = useState('')
 
   const cancelWorker = (id: string) => {
-    const tid = findToolContextForUi().timelineItemId
+    const tid = findToolContextForUi(id).timelineItemId
     respond({ id, cancelled: true })
     clearExtensionToolRowFlags(tid)
-    clearAfterRespond()
-    reconcileStaleInteractiveToolRows(id)
   }
 
   if (!pending) return null
@@ -86,12 +91,10 @@ export function ExtensionUIHost() {
           requestId={pending.id}
           questions={pending.questions}
           onSubmit={(result) => {
-            const s = useExtensionUIStore.getState().suspended
-            const tid = findToolContextForUi().timelineItemId || s?.timelineItemId
+            const s = useExtensionUIStore.getState().suspendedById[pending.id]
+            const tid = findToolContextForUi(pending.id).timelineItemId || s?.timelineItemId
             respond({ id: pending.id, result })
             clearExtensionToolRowFlags(tid)
-            clearAfterRespond()
-            if (result.cancelled) reconcileStaleInteractiveToolRows(pending.id)
           }}
           onSuspend={suspendActiveDialog}
           onCancel={() => cancelWorker(pending.id)}
@@ -103,7 +106,6 @@ export function ExtensionUIHost() {
           onCancel={() => cancelWorker(pending.id)}
           onSubmit={(r) => {
             respond({ id: pending.id, result: r })
-            clearAfterRespond()
           }}
         />
       ) : pending.method === 'select' ? (
@@ -116,7 +118,6 @@ export function ExtensionUIHost() {
                 className="rounded-md border px-3 py-2 text-left text-[13px] hover:bg-accent"
                 onClick={() => {
                   respond({ id: pending.id, value: opt })
-                  clearAfterRespond()
                 }}
               >
                 {opt}
@@ -145,7 +146,6 @@ export function ExtensionUIHost() {
               className="rounded-md border px-3 py-1.5 text-[13px]"
               onClick={() => {
                 respond({ id: pending.id, confirmed: false })
-                clearAfterRespond()
               }}
             >
               {t('extension:no')}
@@ -155,7 +155,6 @@ export function ExtensionUIHost() {
               className="rounded-md bg-primary px-3 py-1.5 text-[13px] text-primary-foreground hover:bg-primary/90"
               onClick={() => {
                 respond({ id: pending.id, confirmed: true })
-                clearAfterRespond()
               }}
             >
               {t('extension:yes')}
@@ -179,7 +178,6 @@ export function ExtensionUIHost() {
               className="rounded-md bg-primary px-3 py-1.5 text-[13px] text-primary-foreground"
               onClick={() => {
                 respond({ id: pending.id, value: inputValue })
-                clearAfterRespond()
               }}
             >
               {t('extension:confirm')}

@@ -28,6 +28,7 @@ export const IPC_INVOKE_CHANNELS = [
   'ipc:dialog:openFiles',
   'ipc:extension.config.get',
   'ipc:extension.config.set',
+  'ipc:extension.pendingUI',
   'ipc:extension.respondUI',
   'ipc:extensions.list',
   'ipc:extensions.missingRuntimePackages',

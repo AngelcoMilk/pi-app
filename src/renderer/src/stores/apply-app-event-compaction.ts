@@ -8,7 +8,7 @@ export function handleCompaction(event: CompactionEvent, api: StoreApi): void {
       import('@renderer/stores/extension-ui-store'),
     ]).then(([ch, st]) => {
       ch.clearExtensionDialogDedupe()
-      st.useExtensionUIStore.getState().clearAfterRespond()
+      st.useExtensionUIStore.getState().resetForSessionContext()
     })
   } else if (event.phase === 'end') {
     state.appendTimeline({

@@ -1,6 +1,11 @@
 import type { AppEvent } from '@shared/app-events'
 import type { AppUpdateAvailableInfo, AppUpdateDownloadProgress } from '@shared/app-update'
 import type { WorkerExitInfo } from '@renderer/lib/worker-exit-runtime'
+import type {
+  ExtensionUIDismissEvent,
+  ExtensionUIPendingRequest,
+  ExtensionUIRequest,
+} from '@shared/extension-ui'
 
 declare global {
   interface Window {
@@ -13,8 +18,10 @@ declare global {
       onEvent: (callback: (event: AppEvent) => void) => () => void
       onWorkerExit: (callback: (info: WorkerExitInfo) => void) => () => void
       onAutoOpened: (callback: (info: { workspaceId: string }) => void) => () => void
-      onExtensionUIRequest: (callback: (request: unknown) => void) => () => void
-      onExtensionUIDismiss: (callback: (payload: { type: string; id?: string; reason?: string }) => void) => () => void
+      onExtensionUIRequest: (
+        callback: (request: ExtensionUIPendingRequest | Extract<ExtensionUIRequest, { method: 'notify' }>) => void,
+      ) => () => void
+      onExtensionUIDismiss: (callback: (payload: ExtensionUIDismissEvent) => void) => () => void
       onAppUpdateAvailable: (callback: (info: AppUpdateAvailableInfo) => void) => () => void
       onAppUpdateDownloadProgress?: (callback: (info: AppUpdateDownloadProgress) => void) => () => void
       onGitWorkspaceChanged: (callback: (payload: { cwd: string }) => void) => () => void
@@ -54,13 +61,15 @@ export function onAutoOpened(callback: (info: { workspaceId: string }) => void):
   return window.piDesktop.onAutoOpened(callback)
 }
 
-export function onExtensionUIRequest(callback: (request: unknown) => void): () => void {
+export function onExtensionUIRequest(
+  callback: (request: ExtensionUIPendingRequest | Extract<ExtensionUIRequest, { method: 'notify' }>) => void,
+): () => void {
   if (!window.piDesktop) return () => {}
   return window.piDesktop.onExtensionUIRequest(callback)
 }
 
 export function onExtensionUIDismiss(
-  callback: (payload: { type: string; id?: string; reason?: string }) => void,
+  callback: (payload: ExtensionUIDismissEvent) => void,
 ): () => void {
   if (!window.piDesktop) return () => {}
   return window.piDesktop.onExtensionUIDismiss(callback)

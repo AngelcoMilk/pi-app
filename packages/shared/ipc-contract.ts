@@ -3,6 +3,11 @@
 import type { AppEvent } from './app-events'
 import type { DiffResult } from './diff-model'
 import type { CompatibilityLevel } from './extension-types'
+import type {
+  ExtensionUIPendingRequest,
+  ExtensionUIResponse,
+  ExtensionUIResponseResult,
+} from './extension-ui'
 import type { SessionContextPreview } from './session-context-preview'
 
 // ── Workspace ──
@@ -246,6 +251,8 @@ export interface ExtensionsListRequest {}
 export interface ExtensionsListResponse { extensions: ExtensionInfo[] }
 export interface ExtensionsSetEnabledRequest { extensionId: string; enabled: boolean }
 export interface ExtensionsSetEnabledResponse { ok: boolean; extensionId: string; enabled: boolean; error?: string; needsWorkerReload?: boolean }
+export interface ExtensionPendingUIRequest {}
+export interface ExtensionPendingUIResponse { requests: ExtensionUIPendingRequest[] }
 
 // ── Registry ──
 export interface RegistryRefreshRequest { force?: boolean }
@@ -329,6 +336,8 @@ export interface IpcMethodMap {
   'review.commit': { request: ReviewCommitRequest; response: ReviewCommitResponse }
   'extensions.list': { request: ExtensionsListRequest; response: ExtensionsListResponse }
   'extensions.setEnabled': { request: ExtensionsSetEnabledRequest; response: ExtensionsSetEnabledResponse }
+  'extension.pendingUI': { request: ExtensionPendingUIRequest; response: ExtensionPendingUIResponse }
+  'extension.respondUI': { request: ExtensionUIResponse; response: ExtensionUIResponseResult }
   'registry.refresh': { request: RegistryRefreshRequest; response: RegistryRefreshResponse }
   'settings.get': { request: SettingsGetRequest; response: SettingsGetResponse }
   'settings.set': { request: SettingsSetRequest; response: SettingsSetResponse }

@@ -1,6 +1,7 @@
 import { utilityProcess, app, type BrowserWindow } from 'electron'
 import { join } from 'path'
 import type { AppEvent } from '@shared/app-events'
+import type { ExtensionUIRequest } from '@shared/extension-ui'
 import type { WorkerResponsePayload } from '@shared/worker-rpc-types'
 import { windowsPathToWsl } from '@shared/wsl-path'
 import { resolveActiveSdk } from './sdk-loader'
@@ -36,6 +37,7 @@ function createSlot(
     initRejecter: null,
     initPromise: null,
     agentTurnActive: false,
+    pendingExtensionUiCount: 0,
     lastIdleAt: now,
     lastForegroundAt: now,
     sdkFallback: false,
@@ -77,7 +79,9 @@ export async function remapSessionWorkerSlot(
 
   const conflict = pool.get(targetKey)
   if (conflict && conflict !== source) {
-    if (conflict.agentTurnActive) throw new Error('SESSION_WORKER_TARGET_BUSY')
+    if (conflict.agentTurnActive || conflict.pendingExtensionUiCount > 0) {
+      throw new Error('SESSION_WORKER_TARGET_BUSY')
+    }
     rejectPendingWorkerRequests(conflict, new Error('Worker slot replaced'))
     await dispose(conflict)
     if (pool.get(targetKey) === conflict) pool.delete(targetKey)
@@ -103,6 +107,11 @@ export function attachWorkerHandlers(
       agentTurnActive: boolean
     }) => void
     onSlotExit: (slot: WorkerSlot, code: number) => void
+    onExtensionUIRequest?: (slot: WorkerSlot, sessionFile: string, request: ExtensionUIRequest) => void
+    onExtensionUIDismiss?: (
+      slot: WorkerSlot,
+      payload: { type: 'extension-ui-dismiss' | 'extension-ui-dismiss-all'; id?: string; reason?: string },
+    ) => void
     /** When set, only forward extension UI from this pool key (X1). */
     getForegroundPoolKey?: () => string | null
   },
@@ -143,35 +152,17 @@ export function attachWorkerHandlers(
       })
     }
 
-    const win = opts.mainWindow
-    if (
-      (data.type === 'extension-ui-dismiss' || data.type === 'extension-ui-dismiss-all') &&
-      win &&
-      !win.isDestroyed()
-    ) {
-      const fg = opts.getForegroundPoolKey?.() ?? null
-      if (fg && fg !== slot.poolKey) {
-        // X1: only foreground session dismiss noise
-      } else {
-        win.webContents.send('ipc:extension-ui-dismiss', {
-          type: data.type,
-          id: data.id,
-          reason: data.reason,
-        })
-      }
+    if (data.type === 'extension-ui-dismiss' || data.type === 'extension-ui-dismiss-all') {
+      opts.onExtensionUIDismiss?.(slot, {
+        type: data.type,
+        id: typeof data.id === 'string' ? data.id : undefined,
+        reason: typeof data.reason === 'string' ? data.reason : undefined,
+      })
     }
 
-    if (data.type === 'extension-ui-request' && win && !win.isDestroyed()) {
-      const req = data.request as { method?: string; notifyType?: string; message?: string }
-      const method = req?.method || ''
-      const fg = opts.getForegroundPoolKey?.() ?? null
-      const isForeground = !fg || fg === slot.poolKey
-      if (!isForeground && method !== 'notify') return
-      const allow =
-        method !== 'notify' || slot.agentTurnActive || req.notifyType === 'error'
-      if (!allow) return
-      if (!isForeground && req.notifyType !== 'error') return
-      win.webContents.send('ipc:extension-ui-request', data.request)
+    if (data.type === 'extension-ui-request') {
+      const sessionFile = typeof data.sessionFile === 'string' ? data.sessionFile : ''
+      opts.onExtensionUIRequest?.(slot, sessionFile, data.request as ExtensionUIRequest)
     }
 
     if (data.type === 'init-done' && slot.initResolver) {
@@ -365,7 +356,7 @@ export async function evictIdleWorkers(
     let victimKey: string | null = null
     let oldestFg = Number.POSITIVE_INFINITY
     for (const [key, slot] of pool) {
-      if (key === opts.foregroundKey || slot.agentTurnActive) continue
+      if (key === opts.foregroundKey || slot.agentTurnActive || slot.pendingExtensionUiCount > 0) continue
       if (slot.lastForegroundAt < oldestFg) {
         oldestFg = slot.lastForegroundAt
         victimKey = key
@@ -389,7 +380,7 @@ export function pruneIdleWorkersByTimeout(
   let removed = 0
   for (const [key, slot] of [...pool.entries()]) {
     if (key === foregroundKey) continue
-    if (slot.agentTurnActive) continue
+    if (slot.agentTurnActive || slot.pendingExtensionUiCount > 0) continue
     if (nowMs - slot.lastIdleAt < delay) continue
     void disposeWorkerSlot(slot)
     pool.delete(key)
@@ -420,7 +411,7 @@ export function canAcquireNewWorker(
   const max = maxWorkers ?? readMaxSessionWorkers()
   if (pool.size < max) return { ok: true }
   for (const slot of pool.values()) {
-    if (!slot.agentTurnActive) return { ok: true }
+    if (!slot.agentTurnActive && slot.pendingExtensionUiCount === 0) return { ok: true }
   }
   return {
     ok: false,

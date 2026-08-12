@@ -141,7 +141,10 @@ export default function App() {
 
   useEffect(() => {
     markExtensionNotifyAppReady()
-    useExtensionUIStore.getState().resetForSessionContext()
+    const initial = useUIStore.getState()
+    useExtensionUIStore
+      .getState()
+      .activateForSession(initial.historySessionFile || initial.workerLiveSnapshot.sessionFile, true)
     void ensureWorkspaceWorkerOnBoot()
     void hydrateThemeFromSettings().catch(() => {})
     void hydrateCustomThemeFromSettings().catch(() => {})

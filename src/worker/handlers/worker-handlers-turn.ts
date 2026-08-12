@@ -1,6 +1,6 @@
 import { errorMessage } from '@shared/error-message'
+import type { ExtensionUIResponse } from '@shared/extension-ui'
 import type { WorkerIncomingMessage } from '../worker-port-types.js'
-import type { ExtensionUIResponse } from '../desktop-ui-bridge.js'
 import type { WorkerReply } from '../worker-handler-types.js'
 import {
   st,
@@ -174,8 +174,8 @@ export async function handleClearqueue(msg: WorkerIncomingMessage, reply: Worker
 
 
 export async function handleExtensionUiResponse(msg: WorkerIncomingMessage, reply: WorkerReply): Promise<void> {
-        st.uiBridge?.handleExtensionUIResponse(msg.response as ExtensionUIResponse)
-        reply({ type: 'extension-ui-response-done' })
+        const handled = st.uiBridge?.handleExtensionUIResponse(msg.response as ExtensionUIResponse) === true
+        reply({ type: 'extension-ui-response-done', handled })
         return
 }
 
@@ -218,4 +218,3 @@ export async function handlePing(msg: WorkerIncomingMessage, reply: WorkerReply)
         reply({ type: 'pong' })
         return
 }
-

@@ -26,6 +26,7 @@ export type ToolTimelineItem = {
   toolArgs?: unknown
   toolStatusLine?: string
   extensionUiSuspended?: boolean
+  extensionUiRequestId?: string
   runId?: string
   turnId?: string
   isError?: boolean

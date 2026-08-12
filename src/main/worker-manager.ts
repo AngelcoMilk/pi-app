@@ -3,6 +3,11 @@
 import { type BrowserWindow } from 'electron'
 import type { AppEvent } from '@shared/app-events'
 import type {
+  ExtensionUIPendingRequest,
+  ExtensionUIResponse,
+  ExtensionUIResponseResult,
+} from '@shared/extension-ui'
+import type {
   WorkerCommandInfo,
   WorkerCompletionItem,
   WorkerContextPreview,
@@ -35,6 +40,7 @@ import { readMaxSessionWorkers } from './worker-pool-config'
 import { configStore } from './config-store'
 import { createNewSessionInPool } from './worker-manager-new-session'
 import { readSessionMetaFromFile } from './session-file-meta'
+import { ExtensionUICoordinator } from './extension-ui-coordinator'
 import {
   applySettledRunToSessionLeafOverride,
   getSessionLeafOverride,
@@ -48,6 +54,10 @@ export class WorkerManager {
   /** Key: session abs path or `ws:${cwd}` */
   private pool = new Map<string, WorkerSlot>()
   private foregroundPoolKey: string | null = null
+  private readonly extensionUI = new ExtensionUICoordinator(
+    () => this.mainWindow,
+    () => this.foregroundPoolKey,
+  )
   private lifecycleChain: Promise<unknown> = Promise.resolve()
   private idleTimer: ReturnType<typeof setInterval> | null = null
 
@@ -175,6 +185,9 @@ export class WorkerManager {
       getForegroundPoolKey: () => this.foregroundPoolKey,
       onAppEvent: (p) => this.forwardAppEvent(p),
       onSlotExit: (s, code) => this.handleSlotExit(s, code),
+      onExtensionUIRequest: (s, sessionFile, request) =>
+        this.extensionUI.handleRequest(s, sessionFile, request),
+      onExtensionUIDismiss: (s, payload) => this.extensionUI.handleDismiss(s, payload),
     })
 
     evictIdleWorkers(this.pool, {
@@ -206,7 +219,9 @@ export class WorkerManager {
       return wsSlot
     }
     for (const slot of this.pool.values()) {
-      if (slot === wsSlot || slot.stopping || slot.agentTurnActive) continue
+      if (slot === wsSlot || slot.stopping || slot.agentTurnActive || slot.pendingExtensionUiCount > 0) {
+        continue
+      }
       if (!this.slotMatchesCurrentRuntime(slot)) continue
       if (slot.cwd !== cwd) continue
       return slot
@@ -265,6 +280,9 @@ export class WorkerManager {
       getForegroundPoolKey: () => this.foregroundPoolKey,
       onAppEvent: (p) => this.forwardAppEvent(p),
       onSlotExit: (s, code) => this.handleSlotExit(s, code),
+      onExtensionUIRequest: (s, sessionFile, request) =>
+        this.extensionUI.handleRequest(s, sessionFile, request),
+      onExtensionUIDismiss: (s, payload) => this.extensionUI.handleDismiss(s, payload),
     })
 
     await init
@@ -318,6 +336,7 @@ export class WorkerManager {
   }
 
   private handleSlotExit(slot: WorkerSlot, code: number): void {
+    this.extensionUI.handleSlotExit(slot)
     const key = slot.poolKey
     if (this.pool.get(key) === slot) this.pool.delete(key)
     if (this.foregroundPoolKey === key) this.foregroundPoolKey = null
@@ -367,6 +386,7 @@ export class WorkerManager {
 
   private async stopUnlocked(): Promise<void> {
     const slots = [...this.pool.values()]
+    for (const slot of slots) this.extensionUI.handleSlotExit(slot)
     this.pool.clear()
     this.foregroundPoolKey = null
     await Promise.all(slots.map((s) => disposeWorkerSlot(s)))
@@ -495,6 +515,9 @@ export class WorkerManager {
         setForeground: (slot) => this.setForeground(slot),
         onAppEvent: (payload) => this.forwardAppEvent(payload),
         onSlotExit: (slot, code) => this.handleSlotExit(slot, code),
+        onExtensionUIRequest: (slot, sessionFile, request) =>
+          this.extensionUI.handleRequest(slot, sessionFile, request),
+        onExtensionUIDismiss: (slot, payload) => this.extensionUI.handleDismiss(slot, payload),
       }),
     )
     this.lifecycleChain = run.then(
@@ -654,6 +677,9 @@ export class WorkerManager {
         getForegroundPoolKey: () => this.foregroundPoolKey,
         onAppEvent: (p) => this.forwardAppEvent(p),
         onSlotExit: (s, code) => this.handleSlotExit(s, code),
+        onExtensionUIRequest: (s, sessionFile, request) =>
+          this.extensionUI.handleRequest(s, sessionFile, request),
+        onExtensionUIDismiss: (s, payload) => this.extensionUI.handleDismiss(s, payload),
       })
       await init
       return slot
@@ -852,16 +878,12 @@ export class WorkerManager {
     await this.request('runExtensionCommand', { text })
   }
 
-  respondExtensionUI(response: {
-    id: string
-    value?: string
-    confirmed?: boolean
-    cancelled?: boolean
-    result?: unknown
-  }): void {
-    const slot = this.foregroundSlot()
-    if (!slot) return
-    slot.worker.postMessage({ type: 'extension-ui-response', response })
+  respondExtensionUI(response: ExtensionUIResponse): Promise<ExtensionUIResponseResult> {
+    return this.extensionUI.respond(response)
+  }
+
+  listPendingExtensionUI(): ExtensionUIPendingRequest[] {
+    return this.extensionUI.listPending()
   }
 
   get isRunning(): boolean {

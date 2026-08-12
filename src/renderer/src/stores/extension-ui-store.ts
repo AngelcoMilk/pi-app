@@ -1,18 +1,22 @@
 import { create } from 'zustand'
+import { sessionFilesEqual } from '@renderer/lib/session-file-key'
 import { useUIStore } from '@renderer/stores/ui-store'
 import type { AskQuestionPayload } from '@renderer/features/extension-ui/questionnaire-dialog'
 import type { ImageReviewPayload } from '@renderer/features/extension-ui/image-review-dialog'
 
-export type ExtensionUIPending =
-  | { id: string; method: 'ask_user_question'; questions: AskQuestionPayload[] }
-  | { id: string; method: 'select'; title: string; options: string[] }
-  | { id: string; method: 'confirm'; title: string; message: string }
-  | { id: string; method: 'input'; title: string; placeholder?: string }
-  | { id: string; method: 'image_review'; payload: ImageReviewPayload }
+type PendingIdentity = { id: string; sessionFile: string; createdAt: number }
+
+export type ExtensionUIPending = PendingIdentity &
+  (
+    | { method: 'ask_user_question'; questions: AskQuestionPayload[] }
+    | { method: 'select'; title: string; options: string[] }
+    | { method: 'confirm'; title: string; message: string }
+    | { method: 'input'; title: string; placeholder?: string }
+    | { method: 'image_review'; payload: ImageReviewPayload }
+  )
 
 export type ExtensionUISuspended = {
   requestId: string
-  pending: ExtensionUIPending
   toolCallId?: string
   toolName?: string
   timelineItemId?: string
@@ -20,81 +24,124 @@ export type ExtensionUISuspended = {
 }
 
 type ExtensionUIState = {
+  pendingById: Record<string, ExtensionUIPending>
+  activeRequestId: string | null
+  suspendedById: Record<string, ExtensionUISuspended>
   activePending: ExtensionUIPending | null
-  suspended: ExtensionUISuspended | null
-  setActivePending: (p: ExtensionUIPending | null) => void
-  suspendActive: (meta: { toolCallId?: string; toolName?: string; timelineItemId?: string }) => void
-  resumeSuspended: () => void
-  clearAfterRespond: () => void
+  upsertPending: (pending: ExtensionUIPending) => void
+  activateForSession: (sessionFile: string | null, restoreSuspended?: boolean) => void
+  suspendActive: (meta: Omit<ExtensionUISuspended, 'requestId' | 'suspendedAt'>) => void
+  resumeSuspended: (requestId?: string) => void
+  removePending: (requestId: string) => void
+  clearAfterRespond: (requestId?: string) => void
   resetForSessionContext: () => void
   pruneStaleSuspension: () => void
 }
 
-/** 仅全屏弹窗打开时阻塞（挂起后已关弹窗，可发消息、可切会话） */
-function hasOpenExtensionDialog(): boolean {
-  return useExtensionUIStore.getState().activePending != null
+function nextForSession(
+  pendingById: Record<string, ExtensionUIPending>,
+  sessionFile: string | null,
+): ExtensionUIPending | null {
+  if (!sessionFile) return null
+  return (
+    Object.values(pendingById)
+      .filter((pending) => sessionFilesEqual(pending.sessionFile, sessionFile))
+      .sort((a, b) => a.createdAt - b.createdAt)[0] ?? null
+  )
+}
+
+function removeRequest(state: ExtensionUIState, requestId: string): Partial<ExtensionUIState> {
+  const pendingById = { ...state.pendingById }
+  const suspendedById = { ...state.suspendedById }
+  delete pendingById[requestId]
+  delete suspendedById[requestId]
+  const activeRequestId = state.activeRequestId === requestId ? null : state.activeRequestId
+  return {
+    pendingById,
+    suspendedById,
+    activeRequestId,
+    activePending: activeRequestId ? pendingById[activeRequestId] ?? null : null,
+  }
 }
 
 function pruneStaleSuspension(): void {
-  const { activePending, suspended } = useExtensionUIStore.getState()
-  if (activePending) return
-  if (!suspended) return
+  const state = useExtensionUIStore.getState()
   const items = useUIStore.getState().timelineItems
-  const tid = suspended.timelineItemId
-  if (!tid) {
-    useExtensionUIStore.setState({ suspended: null })
-    return
+  const suspendedById = { ...state.suspendedById }
+  let changed = false
+  for (const [id, suspension] of Object.entries(suspendedById)) {
+    const row = suspension.timelineItemId
+      ? items.find((item) => item.id === suspension.timelineItemId)
+      : null
+    if (!row?.extensionUiSuspended) {
+      delete suspendedById[id]
+      changed = true
+    }
   }
-  const row = items.find((i) => i.id === tid)
-  if (!row?.extensionUiSuspended) useExtensionUIStore.setState({ suspended: null })
+  if (changed) useExtensionUIStore.setState({ suspendedById })
 }
 
 export const useExtensionUIStore = create<ExtensionUIState>((set, get) => ({
+  pendingById: {},
+  activeRequestId: null,
+  suspendedById: {},
   activePending: null,
-  suspended: null,
 
-  setActivePending: (p) => set({ activePending: p }),
+  upsertPending: (pending) =>
+    set((state) => ({ pendingById: { ...state.pendingById, [pending.id]: pending } })),
 
-  suspendActive: (meta) => {
-    const active = get().activePending
-    if (!active) return
-    set({
-      activePending: null,
-      suspended: {
-        requestId: active.id,
-        pending: active,
-        toolCallId: meta.toolCallId,
-        toolName: meta.toolName,
-        timelineItemId: meta.timelineItemId,
-        suspendedAt: Date.now(),
-      },
-    })
+  activateForSession: (sessionFile, restoreSuspended = false) =>
+    set((state) => {
+      const next = nextForSession(state.pendingById, sessionFile)
+      if (!next) return { activeRequestId: null, activePending: null }
+      if (!restoreSuspended && state.suspendedById[next.id]) {
+        return { activeRequestId: null, activePending: null }
+      }
+      const suspendedById = { ...state.suspendedById }
+      delete suspendedById[next.id]
+      return { activeRequestId: next.id, activePending: next, suspendedById }
+    }),
+
+  suspendActive: (meta) =>
+    set((state) => {
+      const requestId = state.activeRequestId
+      if (!requestId) return state
+      return {
+        activeRequestId: null,
+        activePending: null,
+        suspendedById: {
+          ...state.suspendedById,
+          [requestId]: { requestId, ...meta, suspendedAt: Date.now() },
+        },
+      }
+    }),
+
+  resumeSuspended: (requestId) =>
+    set((state) => {
+      const id = requestId || Object.keys(state.suspendedById)[0]
+      const pending = id ? state.pendingById[id] : null
+      if (!id || !pending) return state
+      const suspendedById = { ...state.suspendedById }
+      delete suspendedById[id]
+      return { activeRequestId: id, activePending: pending, suspendedById }
+    }),
+
+  removePending: (requestId) => set((state) => removeRequest(state, requestId)),
+  clearAfterRespond: (requestId) => {
+    const id = requestId || get().activeRequestId
+    if (id) set((state) => removeRequest(state, id))
   },
-
-  resumeSuspended: () => {
-    const s = get().suspended
-    if (!s) return
-    set({ activePending: s.pending, suspended: null })
-  },
-
-  clearAfterRespond: () => set({ activePending: null, suspended: null }),
-
   pruneStaleSuspension: () => pruneStaleSuspension(),
-
-  resetForSessionContext: () => {
-    set({ activePending: null, suspended: null })
-    void import('@renderer/lib/extension-ui-channel').then((m) => m.clearExtensionDialogDedupe())
-  },
+  resetForSessionContext: () => set({ activeRequestId: null, activePending: null }),
 }))
 
 export function extensionUiBlocksComposer(): boolean {
   pruneStaleSuspension()
-  if (!hasOpenExtensionDialog()) return false
-  const running = useUIStore.getState().runState.status === 'running'
-  // 无弹窗宿主可渲染的 pending（如 Worker 已超时 resolve）不应阻塞
-  const p = useExtensionUIStore.getState().activePending
-  if (!p) return false
-  if (!running) return false
-  return true
+  const pending = useExtensionUIStore.getState().activePending
+  return pending != null && useUIStore.getState().runState.status === 'running'
 }
 
+export function hasPendingExtensionUI(requestId?: string): boolean {
+  const pending = useExtensionUIStore.getState().pendingById
+  return requestId ? pending[requestId] != null : Object.keys(pending).length > 0
+}

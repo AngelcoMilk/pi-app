@@ -1,4 +1,5 @@
 import type { BrowserWindow } from 'electron'
+import type { ExtensionUIRequest } from '@shared/extension-ui'
 import {
   attachWorkerHandlers,
   canAcquireNewWorker,
@@ -21,6 +22,11 @@ export type NewSessionPoolOptions = {
   setForeground: (slot: WorkerSlot) => void
   onAppEvent: (payload: WorkerAppEventForward) => void
   onSlotExit: (slot: WorkerSlot, code: number) => void
+  onExtensionUIRequest: (slot: WorkerSlot, sessionFile: string, request: ExtensionUIRequest) => void
+  onExtensionUIDismiss: (
+    slot: WorkerSlot,
+    payload: { type: 'extension-ui-dismiss' | 'extension-ui-dismiss-all'; id?: string; reason?: string },
+  ) => void
 }
 
 function findReusableWorkspaceSlot(options: NewSessionPoolOptions): WorkerSlot | null {
@@ -32,6 +38,7 @@ function findReusableWorkspaceSlot(options: NewSessionPoolOptions): WorkerSlot |
     options.slotMatchesCurrentRuntime(foreground) &&
     !foreground.sessionFile &&
     !foreground.agentTurnActive &&
+    foreground.pendingExtensionUiCount === 0 &&
     !foreground.stopping
   ) {
     return foreground
@@ -42,6 +49,7 @@ function findReusableWorkspaceSlot(options: NewSessionPoolOptions): WorkerSlot |
       options.slotMatchesCurrentRuntime(slot) &&
       !slot.sessionFile &&
       !slot.agentTurnActive &&
+      slot.pendingExtensionUiCount === 0 &&
       !slot.stopping
     ) {
       return slot
@@ -106,6 +114,8 @@ export async function createNewSessionInPool(
     getForegroundPoolKey: options.foregroundPoolKey,
     onAppEvent: options.onAppEvent,
     onSlotExit: options.onSlotExit,
+    onExtensionUIRequest: options.onExtensionUIRequest,
+    onExtensionUIDismiss: options.onExtensionUIDismiss,
   })
 
   try {

@@ -7,6 +7,7 @@ import type {
   ModelRuntime,
 } from '@earendil-works/pi-coding-agent'
 import type { AppEvent } from '@shared/app-events'
+import type { ExtensionUIDismissReason, ExtensionUIRequest } from '@shared/extension-ui'
 import { formatSessionModelKey, type SessionModelRef } from '@shared/worker-model'
 import { createDesktopUIBridge, type DesktopUIBridge } from './desktop-ui-bridge.js'
 import {
@@ -15,7 +16,7 @@ import {
 } from './worker-session-events.js'
 import { errorMessage } from '@shared/error-message'
 import { sendToMain } from './worker-transport.js'
-import { translateEventPaths } from './worker-path-bridge.js'
+import { toMainPath, translateEventPaths } from './worker-path-bridge.js'
 
 export type WorkerModelRuntime = Pick<ModelRuntime, 'getModel' | 'getAvailable' | 'refresh'>
 
@@ -175,6 +176,7 @@ function buildRuntimeFactory(): CreateAgentSessionRuntimeFactory {
 
 function wireRuntimeCallbacks(runtime: AgentSessionRuntime): void {
   runtime.setBeforeSessionInvalidate(() => {
+    st.uiBridge?.cancelAll('session-replaced')
     detachSessionSubscription()
     st.session = null
     st.modelRuntime = null
@@ -187,6 +189,7 @@ function wireRuntimeCallbacks(runtime: AgentSessionRuntime): void {
 }
 
 async function disposeRuntimeOrSession(): Promise<void> {
+  st.uiBridge?.cancelAll('session-replaced')
   detachSessionSubscription()
   st.agentTurnActive = false
   st.promptPreflightActive = false
@@ -353,7 +356,7 @@ function workerTraceOn(): boolean {
 }
 
 function traceWorkerUi(
-  req: import('./desktop-ui-bridge.js').ExtensionUIRequest,
+  req: ExtensionUIRequest,
   forwarded: boolean,
 ): void {
   if (!workerTraceOn()) return
@@ -368,12 +371,13 @@ function traceWorkerUi(
   })
 }
 
-function postExtensionUiToDesktop(req: import('./desktop-ui-bridge.js').ExtensionUIRequest): void {
+function postExtensionUiToDesktop(req: ExtensionUIRequest): void {
+  const sessionFile = toMainPath(st.session?.sessionFile)
   if (req.method === 'notify') {
     if (!st.agentTurnActive) {
       if (req.notifyType === 'error') {
         traceWorkerUi(req, true)
-        sendToMain({ type: 'extension-ui-request', request: req })
+        sendToMain({ type: 'extension-ui-request', sessionFile, request: req })
       } else {
         traceWorkerUi(req, false)
       }
@@ -381,10 +385,10 @@ function postExtensionUiToDesktop(req: import('./desktop-ui-bridge.js').Extensio
     }
   }
   traceWorkerUi(req, true)
-  sendToMain({ type: 'extension-ui-request', request: req })
+  sendToMain({ type: 'extension-ui-request', sessionFile, request: req })
 }
 
-function postExtensionUiDismiss(id: string, reason: 'timeout' | 'abort'): void {
+function postExtensionUiDismiss(id: string, reason: ExtensionUIDismissReason): void {
   sendToMain({ type: 'extension-ui-dismiss', id, reason })
 }
 

@@ -42,8 +42,8 @@ function finishStaleRow(it: { id: string }): void {
 
 export function reconcileStaleInteractiveToolRows(requestId?: string): void {
   requestAnimationFrame(() => {
-    const { activePending, suspended } = useExtensionUIStore.getState()
-    if (activePending || suspended) return
+    const { pendingById } = useExtensionUIStore.getState()
+    if (requestId ? pendingById[requestId] : Object.keys(pendingById).length > 0) return
 
     const items = useUIStore.getState().timelineItems
     for (let i = items.length - 1; i >= 0; i--) {
@@ -60,8 +60,8 @@ export function reconcileStaleInteractiveToolRows(requestId?: string): void {
 
 export function reconcileAllStaleInteractiveToolRows(): void {
   requestAnimationFrame(() => {
-    const { activePending, suspended } = useExtensionUIStore.getState()
-    if (activePending || suspended) return
+    const { pendingById } = useExtensionUIStore.getState()
+    if (Object.keys(pendingById).length > 0) return
     const items = useUIStore.getState().timelineItems
     for (let i = items.length - 1; i >= 0; i--) {
       const it = items[i]

@@ -1,39 +1,29 @@
 // Bridges pi ExtensionUIContext to Electron (RPC-style pending requests + ask_user_question custom UI)
 
 import type { EventBus, Theme } from '@earendil-works/pi-coding-agent'
+import type {
+  ExtensionUIDismissReason,
+  ExtensionUIRequest,
+  ExtensionUIResponse,
+} from '@shared/extension-ui'
 import { randomUUID } from 'node:crypto'
 
 export const ASK_USER_PROMPT_EVENT = 'rpiv:ask-user:prompt'
 
-export type ExtensionUIRequest =
-  | { id: string; method: 'select'; title: string; options: string[]; timeout?: number }
-  | { id: string; method: 'confirm'; title: string; message: string; timeout?: number }
-  | { id: string; method: 'input'; title: string; placeholder?: string; timeout?: number }
-  | { id: string; method: 'editor'; title: string; prefill?: string }
-  | { id: string; method: 'notify'; message: string; notifyType?: 'info' | 'warning' | 'error' }
-  | { id: string; method: 'custom'; kind: 'ask_user_question'; questions: unknown }
-  | { id: string; method: 'custom'; kind: 'image_review'; image: string; title: string; question: string; context?: string; options: string[]; allowFeedback: boolean }
-
 type Pending = {
   resolve: (v: unknown) => void
+  cancel: () => void
   reject: (e: Error) => void
   cleanup: () => void
 }
 
 export type DesktopUIBridge = {
   uiContext: Record<string, unknown>
-  handleExtensionUIResponse: (response: ExtensionUIResponse) => void
+  handleExtensionUIResponse: (response: ExtensionUIResponse) => boolean
+  cancelAll: (reason: ExtensionUIDismissReason) => void
   /** Cache interact args extracted by Worker (driven by adapter.json interact.fields). */
   setInteractArgs: (schema: 'questions' | 'review' | 'clarify', args: Record<string, unknown> | null) => void
   dispose: () => void
-}
-
-export type ExtensionUIResponse = {
-  id: string
-  value?: string
-  confirmed?: boolean
-  cancelled?: boolean
-  result?: unknown
 }
 
 function createDialogPromise<T>(
@@ -42,7 +32,11 @@ function createDialogPromise<T>(
   request: ExtensionUIRequest,
   parse: (r: ExtensionUIResponse) => T,
   defaultValue: T,
-  opts?: { signal?: AbortSignal; timeout?: number; onDismiss?: (id: string, reason: 'timeout' | 'abort') => void },
+  opts?: {
+    signal?: AbortSignal
+    timeout?: number
+    onDismiss?: (id: string, reason: ExtensionUIDismissReason) => void
+  },
 ): Promise<T> {
   if (opts?.signal?.aborted) return Promise.resolve(defaultValue)
 
@@ -69,6 +63,7 @@ function createDialogPromise<T>(
     }
     pending.set(id, {
       resolve: (v) => resolve(parse(v as ExtensionUIResponse)),
+      cancel: () => resolve(defaultValue),
       reject,
       cleanup,
     })
@@ -94,7 +89,7 @@ const desktopTheme = {
 export function createDesktopUIBridge(
   eventBus: EventBus,
   onRequest: (req: ExtensionUIRequest) => void,
-  onDialogDismiss?: (id: string, reason: 'timeout' | 'abort') => void,
+  onDialogDismiss?: (id: string, reason: ExtensionUIDismissReason) => void,
 ): DesktopUIBridge {
   const dismissOpts = onDialogDismiss ? { onDismiss: onDialogDismiss } : undefined
   const pending = new Map<string, Pending>()
@@ -253,21 +248,28 @@ export function createDesktopUIBridge(
     uiContext,
     handleExtensionUIResponse(response: ExtensionUIResponse) {
       const p = pending.get(response.id)
-      if (!p) return
+      if (!p) return false
       p.cleanup()
       p.resolve(response)
+      return true
     },
     setInteractArgs(schema, args) {
       interactArgs = args ? { schema, args } : null
     },
+    cancelAll(reason) {
+      lastAskPayload = null
+      interactArgs = null
+      for (const [id, p] of [...pending]) {
+        p.cleanup()
+        p.cancel()
+        onDialogDismiss?.(id, reason)
+      }
+      pending.clear()
+    },
     dispose() {
       unsubAsk()
       interactArgs = null
-      for (const p of pending.values()) {
-        p.cleanup()
-        p.reject(new Error('UI bridge disposed'))
-      }
-      pending.clear()
+      this.cancelAll('worker-dispose')
     },
   }
 }

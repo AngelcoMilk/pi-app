@@ -13,7 +13,6 @@ import { extractJsonPath, extractStatusFromOutput } from '../extension-compat/js
 import { enrichToolChildSessionFiles } from '../extension-compat/tool-child-session.js'
 import type { DesktopUIBridge } from './desktop-ui-bridge.js'
 import { lastAssistantFromMessages } from './session-event-helpers.js'
-import { sendToMain } from './worker-transport.js'
 
 export type SessionEventDeps = {
   baseEvent: () => Record<string, unknown>
@@ -292,7 +291,7 @@ export function handleSessionEvent(event: AgentSessionEvent, deps: SessionEventD
     }
     case 'compaction_start': {
       deps.emit({ ...base, type: 'compaction', phase: 'start' } as AppEvent)
-      sendToMain({ type: 'extension-ui-dismiss-all', reason: 'compaction' })
+      uiBridge?.cancelAll('compaction')
       break
     }
     case 'session_info_changed':

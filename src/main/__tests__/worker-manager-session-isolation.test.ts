@@ -59,6 +59,7 @@ function fakeSlot(poolKey: string, active = false): WorkerSlot {
     initRejecter: null,
     initPromise: null,
     agentTurnActive: active,
+    pendingExtensionUiCount: 0,
     lastIdleAt: Date.now(),
     lastForegroundAt: Date.now(),
     sdkFallback: false,
