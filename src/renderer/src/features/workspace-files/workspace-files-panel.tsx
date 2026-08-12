@@ -61,6 +61,7 @@ export function WorkspaceFilesPanel() {
 
   useEffect(() => {
     resetTabs()
+    useUIStore.setState({ filesPreviewChatExpand: false })
   }, [workspaceRoot, resetTabs])
 
   useEffect(() => {
@@ -82,13 +83,13 @@ export function WorkspaceFilesPanel() {
   }, [activeTab?.rel, activePanel, rightPanelCollapsed])
 
   const toggleChatPreviewExpand = useCallback(() => {
-    if (!previewPath) return
-    if (!filesPreviewChatExpand) {
-      if (rightPanelCollapsed) toggleRightPanel()
-      useUIStore.setState({ filesPreviewChatExpand: true })
+    if (filesPreviewChatExpand) {
+      useUIStore.setState({ filesPreviewChatExpand: false })
       return
     }
-    useUIStore.setState({ filesPreviewChatExpand: false })
+    if (!previewPath) return
+    if (rightPanelCollapsed) toggleRightPanel()
+    useUIStore.setState({ filesPreviewChatExpand: true })
   }, [previewPath, filesPreviewChatExpand, rightPanelCollapsed, toggleRightPanel])
 
   const onSelectPath = useCallback(
@@ -119,7 +120,7 @@ export function WorkspaceFilesPanel() {
           filesPreviewChatExpand && 'bg-[var(--bg-active)] text-foreground',
         )}
         title={filesPreviewChatExpand ? t('chrome.collapsePreview') : t('chrome.expandPreview')}
-        disabled={!previewPath}
+        disabled={!filesPreviewChatExpand && !previewPath}
         onClick={toggleChatPreviewExpand}
       >
         <Maximize2 className="h-3.5 w-3.5" />
