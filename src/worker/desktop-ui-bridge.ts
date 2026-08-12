@@ -3,6 +3,8 @@
 import type { EventBus, Theme } from '@earendil-works/pi-coding-agent'
 import type {
   ExtensionUIDismissReason,
+  ExtensionUIQuestion,
+  ExtensionUIQuestionnaireResult,
   ExtensionUIRequest,
   ExtensionUIResponse,
 } from '@shared/extension-ui'
@@ -21,9 +23,21 @@ export type DesktopUIBridge = {
   uiContext: Record<string, unknown>
   handleExtensionUIResponse: (response: ExtensionUIResponse) => boolean
   cancelAll: (reason: ExtensionUIDismissReason) => void
+  requestQuestionnaire: (
+    toolCallId: string,
+    questions: ExtensionUIQuestion[],
+    signal?: AbortSignal,
+  ) => Promise<ExtensionUIQuestionnaireResult>
   /** Cache interact args extracted by Worker (driven by adapter.json interact.fields). */
   setInteractArgs: (schema: 'questions' | 'review' | 'clarify', args: Record<string, unknown> | null) => void
   dispose: () => void
+}
+
+const bridgesByContext = new WeakMap<object, DesktopUIBridge>()
+
+export function getDesktopUIBridge(uiContext: unknown): DesktopUIBridge | null {
+  if (!uiContext || typeof uiContext !== 'object') return null
+  return bridgesByContext.get(uiContext as object) ?? null
 }
 
 function createDialogPromise<T>(
@@ -210,7 +224,12 @@ export function createDesktopUIBridge(
       return createDialogPromise(
         emitReq,
         pending,
-        { id, method: 'custom', kind: 'ask_user_question', questions },
+        {
+          id,
+          method: 'custom',
+          kind: 'ask_user_question',
+          questions: questions as ExtensionUIQuestion[],
+        },
         (r) => (r.cancelled ? ({ cancelled: true, answers: [] } as T) : (r.result as T)),
         { cancelled: true, answers: [] } as T,
         dismissOpts,
@@ -244,7 +263,7 @@ export function createDesktopUIBridge(
     setToolsExpanded: () => {},
   }
 
-  return {
+  const bridge: DesktopUIBridge = {
     uiContext,
     handleExtensionUIResponse(response: ExtensionUIResponse) {
       const p = pending.get(response.id)
@@ -252,6 +271,21 @@ export function createDesktopUIBridge(
       p.cleanup()
       p.resolve(response)
       return true
+    },
+    requestQuestionnaire(toolCallId, questions, signal) {
+      lastAskPayload = null
+      const id = randomUUID()
+      return createDialogPromise(
+        emitReq,
+        pending,
+        { id, method: 'custom', kind: 'ask_user_question', toolCallId, questions },
+        (response) =>
+          response.cancelled
+            ? { cancelled: true, answers: [] }
+            : (response.result as ExtensionUIQuestionnaireResult),
+        { cancelled: true, answers: [] },
+        { signal, ...dismissOpts },
+      )
     },
     setInteractArgs(schema, args) {
       interactArgs = args ? { schema, args } : null
@@ -270,6 +304,9 @@ export function createDesktopUIBridge(
       unsubAsk()
       interactArgs = null
       this.cancelAll('worker-dispose')
+      bridgesByContext.delete(uiContext)
     },
   }
+  bridgesByContext.set(uiContext, bridge)
+  return bridge
 }

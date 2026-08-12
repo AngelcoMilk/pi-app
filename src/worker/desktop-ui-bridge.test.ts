@@ -39,4 +39,22 @@ describe('createDesktopUIBridge', () => {
     await expect(answer).resolves.toBe(false)
     expect(dismiss).toHaveBeenCalledWith(requests[0].id, 'session-replaced')
   })
+
+  it('cancels a scoped questionnaire when its tool signal aborts', async () => {
+    const requests: Array<{ id: string }> = []
+    const dismiss = vi.fn()
+    const bridge = createDesktopUIBridge(
+      fakeEventBus(),
+      (request) => requests.push(request),
+      dismiss,
+    )
+    const controller = new AbortController()
+    const pending = bridge.requestQuestionnaire('tool-call-1', [], controller.signal)
+
+    controller.abort()
+
+    await expect(pending).resolves.toEqual({ cancelled: true, answers: [] })
+    expect(dismiss).toHaveBeenCalledWith(requests[0].id, 'abort')
+    expect(bridge.handleExtensionUIResponse({ id: requests[0].id, result: {} })).toBe(false)
+  })
 })

@@ -7,13 +7,46 @@ export type ExtensionUIDismissReason =
   | 'worker-exit'
   | 'worker-dispose'
 
+export type ExtensionUIQuestionOption = {
+  label: string
+  description?: string
+  hasPreview?: boolean
+  preview?: string
+}
+
+export type ExtensionUIQuestion = {
+  question: string
+  header?: string
+  multiSelect?: boolean
+  options: ExtensionUIQuestionOption[]
+}
+
+export type ExtensionUIQuestionAnswer = {
+  questionIndex: number
+  question: string
+  kind: 'option' | 'custom' | 'multi'
+  answer: string | null
+  selected?: string[]
+}
+
+export type ExtensionUIQuestionnaireResult = {
+  cancelled: boolean
+  answers: ExtensionUIQuestionAnswer[]
+}
+
 export type ExtensionUIRequest =
   | { id: string; method: 'select'; title: string; options: string[]; timeout?: number }
   | { id: string; method: 'confirm'; title: string; message: string; timeout?: number }
   | { id: string; method: 'input'; title: string; placeholder?: string; timeout?: number }
   | { id: string; method: 'editor'; title: string; prefill?: string }
   | { id: string; method: 'notify'; message: string; notifyType?: 'info' | 'warning' | 'error' }
-  | { id: string; method: 'custom'; kind: 'ask_user_question'; questions: unknown }
+  | {
+      id: string
+      method: 'custom'
+      kind: 'ask_user_question'
+      toolCallId?: string
+      questions: ExtensionUIQuestion[]
+    }
   | {
       id: string
       method: 'custom'

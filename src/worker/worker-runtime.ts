@@ -10,6 +10,7 @@ import type { AppEvent } from '@shared/app-events'
 import type { ExtensionUIDismissReason, ExtensionUIRequest } from '@shared/extension-ui'
 import { formatSessionModelKey, type SessionModelRef } from '@shared/worker-model'
 import { createDesktopUIBridge, type DesktopUIBridge } from './desktop-ui-bridge.js'
+import { decorateQuestionnaireTools } from './questionnaire-tool-decorator.js'
 import {
   handleSessionEvent as dispatchSessionEvent,
   resetSessionEventTracking,
@@ -159,6 +160,7 @@ function buildRuntimeFactory(): CreateAgentSessionRuntimeFactory {
       agentDir,
       resourceLoaderOptions: {
         eventBus: st.sharedEventBus!,
+        extensionsOverride: (result) => decorateQuestionnaireTools(result, cwd),
       },
     })
     const created = await sdk.createAgentSessionFromServices({
