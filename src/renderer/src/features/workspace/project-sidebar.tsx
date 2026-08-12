@@ -19,7 +19,9 @@ import {
   type SessionItem,
 } from './project-sidebar-types'
 import { projectFolderOrder } from './project-folder-order'
-import { ProjectDiskRow, ProjectSessionTree, SandboxDialogRow } from './project-sidebar-rows'
+import { ProjectSessionTree } from './project-sidebar-rows'
+import { ProjectDiskRow } from './project-disk-row'
+import { SandboxDialogRow } from './sandbox-dialog-row'
 import { enterBlankSession } from '@renderer/lib/blank-session-transition'
 
 export function ProjectSidebar({

@@ -1,17 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ChevronRight, Folder, GitBranch, Inbox, Plus } from '@renderer/components/icons'
-import { cn } from '@renderer/lib/utils'
 import { activateWorkspace, switchSessionInPlace } from '@renderer/lib/activate-workspace'
 import { guardSessionSwitch } from '@renderer/lib/session-switch-guard'
-import { SidebarAnimatedCollapse } from '@renderer/components/ui/sidebar-animated-collapse'
 import { useUIStore } from '@renderer/stores/ui-store'
 import { sessionFilesEqual } from '@renderer/lib/session-file-key'
 import { openSubagentSessionPreview } from '@renderer/lib/subagent-session-navigation'
 import { collectActiveSubagentSessionChildren } from '@renderer/lib/subagent-session-activity'
 import { useToolCardCatalogReady } from '@renderer/features/timeline/tool-card-registry'
-import { SessionRunningPixelGrid } from './session-running-pixel-grid'
-import type { SandboxEntry, SessionItem } from './project-sidebar-types'
+import type { SessionItem } from './project-sidebar-types'
+import { isSessionRuntimeRunning } from './session-runtime-running'
+import { ProjectSessionRow } from './project-session-row'
 
 export function ProjectSessionTree({
   workspacePath,
@@ -116,246 +114,40 @@ export function ProjectSessionTree({
               : []
           const children = currentParent ? liveChildren : retainedChildren
           const expanded = !!sessionFile && expandedSessionFiles.has(sessionFile)
-          const running = !!(
-            sessionFile &&
-            Object.entries(sessionRuntimeRunning).some(
-              ([runtimeKey, isRunning]) => isRunning && sessionFilesEqual(runtimeKey, sessionFile),
-            )
-          )
-          const parentActive =
-            currentSessionId === s.sessionId
-            && workspacePath === currentWorkspace
-            && sessionFilesEqual(historySessionFile, sessionFile)
+          const running = isSessionRuntimeRunning(sessionFile, sessionRuntimeRunning)
           return (
-            <div key={s.sessionId} className="mb-0.5">
-              <div
-                onContextMenu={(event) =>
-                  onSessionContextMenu(event, {
-                    sessionId: s.sessionId,
-                    sessionFile,
-                    title: s.title || s.sessionId.slice(0, 8),
-                    workspacePath,
-                  })
-                }
-                className={cn(
-                  'nav-row sidebar-session-row flex min-h-[38px] items-center gap-0.5 rounded-lg px-1 py-0.5',
-                  parentActive
-                    ? 'nav-row-active'
-                    : 'text-foreground-secondary hover:text-foreground',
-                )}
-              >
-                <button
-                  type="button"
-                  onClick={() => openParentSession(s)}
-                  className="flex min-w-0 flex-1 items-center gap-1.5 rounded-md px-2 py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/45"
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-[13px] leading-[18px] text-foreground">
-                      {s.title || s.sessionId.slice(0, 8)}
-                    </div>
-                    <div className="text-[11px] leading-[16px] tabular-nums text-foreground-secondary/85">
-                      {new Date(s.updatedAt).toLocaleString(undefined, {
-                        month: 'short',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </div>
-                  </div>
-                  {running ? (
-                    <SessionRunningPixelGrid
-                      className="ml-0.5 opacity-80"
-                      title={t('common:status.running', { defaultValue: 'Running' })}
-                    />
-                  ) : null}
-                </button>
-                {children.length > 0 && sessionFile && (
-                  <button
-                    type="button"
-                    aria-label={t('common:sidebar.toggleSubagents', {
-                      title: s.title || s.sessionId.slice(0, 8),
-                    })}
-                    aria-expanded={expanded}
-                    onClick={() => {
-                      setExpandedSessionFiles((previous) => {
-                        const next = new Set(previous)
-                        if (next.has(sessionFile)) next.delete(sessionFile)
-                        else next.add(sessionFile)
-                        return next
-                      })
-                    }}
-                    className="chrome-icon-btn flex h-7 w-6 shrink-0 items-center justify-center rounded-md"
-                  >
-                    <ChevronRight
-                      className="chevron-expand h-3 w-3 text-foreground-secondary/75"
-                      data-open={expanded ? 'true' : 'false'}
-                    />
-                  </button>
-                )}
-              </div>
-              {children.length > 0 && (
-                <SidebarAnimatedCollapse open={expanded}>
-                  <div className="ml-5 border-l border-border/35 pb-0.5 pl-1.5 pt-0.5">
-                    {children.map((child) => {
-                      const childActive = !!child.sessionFile
-                        && workspacePath === currentWorkspace
-                        && sessionFilesEqual(child.sessionFile, historySessionFile)
-                      const canOpen = !!child.sessionFile
-                      return (
-                        <button
-                          key={child.key}
-                          type="button"
-                          disabled={!canOpen}
-                          aria-label={canOpen
-                            ? t('common:sidebar.openSubagentSession', { agent: child.agent })
-                            : t('common:sidebar.subagentSessionUnavailable', { agent: child.agent })}
-                          onClick={() => {
-                            if (child.sessionFile) void openSubagentSessionPreview(child.sessionFile)
-                          }}
-                          className={cn(
-                            'nav-row sidebar-subagent-row mb-0.5 flex w-full min-w-0 items-center gap-2 rounded-md px-2 py-1.5 text-left',
-                            childActive
-                              ? 'nav-row-active'
-                              : 'text-foreground-secondary hover:text-foreground',
-                            !canOpen && 'cursor-default opacity-60',
-                          )}
-                        >
-                          <GitBranch className="h-3.5 w-3.5 shrink-0 text-foreground-secondary/70" />
-                          <div className="min-w-0 flex-1">
-                            <div className="truncate font-mono text-[11px] leading-[16px] text-foreground">
-                              {child.agent}
-                            </div>
-                            <div className="truncate text-[10px] leading-[14px] text-foreground-secondary/75">
-                              {child.task || t(`timeline:tree.state.${child.state}`)}
-                            </div>
-                          </div>
-                          <span className="shrink-0 text-[9px] font-medium text-foreground-secondary/65">
-                            {t(`timeline:tree.state.${child.state}`)}
-                          </span>
-                        </button>
-                      )
-                    })}
-                  </div>
-                </SidebarAnimatedCollapse>
-              )}
-            </div>
+            <ProjectSessionRow
+              key={s.sessionId}
+              session={s}
+              workspacePath={workspacePath}
+              currentWorkspace={currentWorkspace}
+              currentSessionId={currentSessionId}
+              historySessionFile={historySessionFile}
+              children={children}
+              expanded={expanded}
+              running={running}
+              onOpen={() => openParentSession(s)}
+              onToggle={() => {
+                if (!sessionFile) return
+                setExpandedSessionFiles((previous) => {
+                  const next = new Set(previous)
+                  if (next.has(sessionFile)) next.delete(sessionFile)
+                  else next.add(sessionFile)
+                  return next
+                })
+              }}
+              onContextMenu={(event) =>
+                onSessionContextMenu(event, {
+                  sessionId: s.sessionId,
+                  sessionFile,
+                  title: s.title || s.sessionId.slice(0, 8),
+                  workspacePath,
+                })
+              }
+            />
           )
         })
       )}
-    </div>
-  )
-}
-
-export function ProjectDiskRow({
-  path,
-  name,
-  active,
-  open,
-  onToggleOpen,
-  onNewSession,
-  onProjectContextMenu,
-  sessionTree,
-}: {
-  path: string
-  name: string
-  active: boolean
-  open: boolean
-  onToggleOpen: () => void
-  onNewSession: () => void
-  onProjectContextMenu: (e: React.MouseEvent) => void
-  sessionTree: React.ReactNode
-}) {
-  const { t } = useTranslation()
-  return (
-    <div key={path} className="sidebar-project-row mb-0.5" onContextMenu={onProjectContextMenu}>
-      <div
-        className={cn(
-          'nav-row flex min-h-[36px] items-center gap-0.5 rounded-lg px-0.5',
-          (active || open) && 'bg-[var(--bg-hover)]/80',
-        )}
-      >
-        <button
-          type="button"
-          onClick={onToggleOpen}
-          className="sidebar-project-hit flex min-w-0 flex-1 items-center gap-2 px-1.5 py-1.5 text-left"
-          title={path}
-          aria-expanded={open}
-        >
-          <ChevronRight
-            className="chevron-expand h-3.5 w-3.5 shrink-0 text-foreground-secondary/80"
-            data-open={open ? 'true' : 'false'}
-          />
-          <Folder
-            className={cn(
-              'folder-icon h-4 w-4 shrink-0 transition-colors duration-200',
-              active ? 'text-brand' : 'text-foreground-secondary/70',
-            )}
-          />
-          <span
-            className={cn(
-              'truncate text-[14px] leading-[20px]',
-              active ? 'font-medium text-foreground' : 'text-foreground-secondary',
-            )}
-          >
-            {name}
-          </span>
-        </button>
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation()
-            onNewSession()
-          }}
-          title={t('common:newSession')}
-          className="chrome-icon-btn ml-0.5 cursor-pointer rounded p-1"
-        >
-          <Plus className="h-3.5 w-3.5" />
-        </button>
-      </div>
-      <SidebarAnimatedCollapse open={open}>{sessionTree}</SidebarAnimatedCollapse>
-    </div>
-  )
-}
-
-export function SandboxDialogRow({
-  box,
-  active,
-  onOpen,
-  onContextMenu,
-}: {
-  box: SandboxEntry
-  active: boolean
-  onOpen: () => void
-  onContextMenu: (e: React.MouseEvent) => void
-}) {
-  const { t } = useTranslation()
-  const displayLabel =
-    box.label?.trim() || t('common:sidebar.tempChat')
-  return (
-    <div
-      key={box.path}
-      role="button"
-      tabIndex={0}
-      onClick={onOpen}
-      onKeyDown={(e) => e.key === 'Enter' && onOpen()}
-      onContextMenu={onContextMenu}
-      className={cn(
-        'nav-row sidebar-session-row mb-0.5 flex min-h-[40px] items-center gap-2.5 rounded-lg px-3 py-2',
-        active ? 'nav-row-active' : 'text-foreground-secondary hover:text-foreground',
-      )}
-    >
-      <Inbox className={cn('h-4 w-4 shrink-0', active ? 'text-brand' : 'opacity-70')} />
-      <div className="min-w-0 flex-1">
-        <div className="truncate text-[14px] leading-[20px] text-foreground">{displayLabel}</div>
-        <div className="text-[11px] leading-[16px] tabular-nums text-foreground-secondary/85">
-          {new Date(box.createdAt).toLocaleString(undefined, {
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-          })}
-        </div>
-      </div>
     </div>
   )
 }
