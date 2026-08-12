@@ -20,6 +20,7 @@ import {
 } from './project-sidebar-types'
 import { projectFolderOrder } from './project-folder-order'
 import { ProjectDiskRow, ProjectSessionTree, SandboxDialogRow } from './project-sidebar-rows'
+import { enterBlankSession } from '@renderer/lib/blank-session-transition'
 
 export function ProjectSidebar({
   onOpenProject,
@@ -176,7 +177,7 @@ export function ProjectSidebar({
   }
 
   const handleNewSandboxDialog = () => {
-    useUIStore.getState().enterEphemeralSandboxDraft()
+    enterBlankSession('ephemeral-sandbox')
     void import('@renderer/lib/composer-run-display').then((m) => m.refreshComposerRunDisplay())
   }
 

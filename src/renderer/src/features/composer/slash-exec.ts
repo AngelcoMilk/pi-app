@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import i18n from '@renderer/lib/i18n'
 import { ipcClient } from '@renderer/lib/ipc-client'
 import { useUIStore } from '@renderer/stores/ui-store'
+import { enterBlankSession } from '@renderer/lib/blank-session-transition'
 
 /** App-native builtins handled directly in the renderer (not forwarded as plain prompt text). */
 const APP_BUILTIN = new Set([
@@ -134,10 +135,7 @@ export async function executeSlashCommand(
           toast.error(i18n.t('composer:toast.needWorkspace'))
           return true
         }
-        store.clearTimeline()
-        store.setCurrentSession(null)
-        store.setHistoryMeta(0, 0, null)
-        void ipcClient.invoke('session.setPendingBind', { sessionFile: null }).catch(() => {})
+        enterBlankSession('pending-project')
         void import('@renderer/lib/composer-run-display').then((m) => m.refreshComposerRunDisplay())
         toast.info(i18n.t('composer:toast.newSessionReady'))
       } catch (e) {

@@ -10,6 +10,7 @@ import { captureVisibleLiveSessionTimeline } from '@renderer/lib/capture-live-se
 import { fetchWorkerLiveSnapshot } from '@renderer/lib/session-worker-sync'
 import { focusSessionSync } from '@renderer/lib/session-shell'
 import { sessionFilesEqual } from '@renderer/lib/session-file-key'
+import { enterBlankSession } from '@renderer/lib/blank-session-transition'
 
 export type ActivateWorkspaceOptions = {
   preferHome?: boolean
@@ -189,7 +190,7 @@ export async function switchSessionInPlace(sessionId: string, sessionFile?: stri
   store.clearPendingNewSessionPlaceholder()
 
   if (sessionId === PENDING_NEW_SESSION_ID) {
-    store.enterPendingNewSessionPlaceholder()
+    enterBlankSession('pending-project')
     return
   }
 
