@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, type MutableRefObject, type RefObject } from 'react'
 import { isTimelineNearBottom, scheduleTimelineScrollToBottom } from './timeline-follow-scroll'
 
-export type TimelineAnchorReason = 'session-enter' | 'message-sent' | 'jump-to-bottom' | 'resume-stream'
+export type TimelineAnchorReason = 'message-sent' | 'jump-to-bottom' | 'resume-stream'
 
 const ANCHOR_EVENT = 'pi-desktop:timeline-anchor'
 
@@ -11,21 +11,20 @@ export function requestTimelineBottomAnchor(reason: TimelineAnchorReason): void 
 
 /**
  * Sticky-bottom controller for intentional anchors only:
- * - session enter / message sent / jump button → force follow + scroll
+ * - message sent / jump button → force follow + scroll
  * - resume-stream → only pin if user is already following (near bottom)
  * Never used to re-lock follow during passive stream growth.
  */
 export function useTimelineBottomAnchorController(
   scrollRef: RefObject<HTMLDivElement | null>,
   followLiveRef: MutableRefObject<boolean>,
-  sessionKey: string | null,
 ) {
   const pendingVerify = useRef(0)
 
   const runAnchor = useCallback(
     (reason: TimelineAnchorReason) => {
       const forceFollow =
-        reason === 'session-enter' || reason === 'message-sent' || reason === 'jump-to-bottom'
+        reason === 'message-sent' || reason === 'jump-to-bottom'
       if (forceFollow) {
         followLiveRef.current = true
       } else if (reason === 'resume-stream') {
@@ -60,11 +59,6 @@ export function useTimelineBottomAnchorController(
     window.addEventListener(ANCHOR_EVENT, onAnchor)
     return () => window.removeEventListener(ANCHOR_EVENT, onAnchor)
   }, [runAnchor])
-
-  useEffect(() => {
-    if (!sessionKey) return
-    runAnchor('session-enter')
-  }, [sessionKey, runAnchor])
 
   useEffect(
     () => () => {

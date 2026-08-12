@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { ChevronLeft, ChevronRight, Maximize2, Search } from '@renderer/components/icons'
@@ -20,6 +20,8 @@ type RenameTarget = Pick<FilesCtxTarget, 'abs' | 'name' | 'rel'>
 export function WorkspaceFilesPanel() {
   const { t } = useTranslation('files')
   const workspaceRoot = useUIStore((s) => s.currentWorkspace)
+  const historySessionFile = useUIStore((s) => s.historySessionFile)
+  const currentSessionId = useUIStore((s) => s.currentSessionId)
   const activePanel = useUIStore((s) => s.activePanel)
   const filesPreviewChatExpand = useUIStore((s) => s.filesPreviewChatExpand)
   const rightPanelCollapsed = useUIStore((s) => s.rightPanelCollapsed)
@@ -28,13 +30,14 @@ export function WorkspaceFilesPanel() {
   const {
     tabs,
     activeTab,
+    fullscreen,
     openFile,
     closeTab,
     activateTab,
+    setFullscreen,
     reorderTabs,
     renameTabRel,
-    resetTabs,
-  } = useFilePreviewTabs()
+  } = useFilePreviewTabs(historySessionFile, historySessionFile || currentSessionId)
   const [explorerCollapsed, setExplorerCollapsed] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [treeEpoch, setTreeEpoch] = useState(0)
@@ -47,21 +50,9 @@ export function WorkspaceFilesPanel() {
   const selectedPath = activeTab?.rel ?? null
   const previewPath = activeTab?.rel ?? null
 
-  useEffect(() => {
-    if (activePanel !== 'files') {
-      useUIStore.setState({ filesPreviewChatExpand: false })
-    }
-  }, [activePanel])
-
-  useEffect(() => {
-    return () => {
-      useUIStore.setState({ filesPreviewChatExpand: false })
-    }
-  }, [])
-
-  useEffect(() => {
-    resetTabs()
-  }, [workspaceRoot, resetTabs])
+  useLayoutEffect(() => {
+    useUIStore.setState({ filesPreviewChatExpand: fullscreen })
+  }, [fullscreen])
 
   useEffect(() => {
     // Refresh preview only when the files panel is the active right-panel tab and visible.
@@ -82,14 +73,16 @@ export function WorkspaceFilesPanel() {
   }, [activeTab?.rel, activePanel, rightPanelCollapsed])
 
   const toggleChatPreviewExpand = useCallback(() => {
-    if (!previewPath) return
-    if (!filesPreviewChatExpand) {
-      if (rightPanelCollapsed) toggleRightPanel()
-      useUIStore.setState({ filesPreviewChatExpand: true })
+    if (filesPreviewChatExpand) {
+      useUIStore.setState({ filesPreviewChatExpand: false })
+      setFullscreen(false)
       return
     }
-    useUIStore.setState({ filesPreviewChatExpand: false })
-  }, [previewPath, filesPreviewChatExpand, rightPanelCollapsed, toggleRightPanel])
+    if (!previewPath) return
+    if (rightPanelCollapsed) toggleRightPanel()
+    useUIStore.setState({ filesPreviewChatExpand: true })
+    setFullscreen(true)
+  }, [previewPath, filesPreviewChatExpand, rightPanelCollapsed, toggleRightPanel, setFullscreen])
 
   const onSelectPath = useCallback(
     (rel: string, isDirectory: boolean, opts?: { openInNewTab?: boolean }) => {
@@ -119,7 +112,7 @@ export function WorkspaceFilesPanel() {
           filesPreviewChatExpand && 'bg-[var(--bg-active)] text-foreground',
         )}
         title={filesPreviewChatExpand ? t('chrome.collapsePreview') : t('chrome.expandPreview')}
-        disabled={!previewPath}
+        disabled={!filesPreviewChatExpand && !previewPath}
         onClick={toggleChatPreviewExpand}
       >
         <Maximize2 className="h-3.5 w-3.5" />

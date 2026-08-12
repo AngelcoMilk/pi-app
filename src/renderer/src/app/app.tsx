@@ -45,6 +45,7 @@ import {
 } from '@renderer/lib/available-models-cache'
 
 import { useDoubleEscapeTree } from '@renderer/hooks/use-double-escape-tree'
+import { useSessionPanelMemory } from '@renderer/hooks/use-session-panel-memory'
 
 type View = 'main' | 'settings'
 
@@ -77,6 +78,8 @@ export default function App() {
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const activePanel = useUIStore((s) => s.activePanel)
+  const historySessionFile = useUIStore((s) => s.historySessionFile)
+  const currentSessionId = useUIStore((s) => s.currentSessionId)
   const rightPanelCollapsed = useUIStore((s) => s.rightPanelCollapsed)
   const modelPickerOpen = useUIStore((s) => s.modelPickerOpen)
   const thinkingPickerOpen = useUIStore((s) => s.thinkingPickerOpen)
@@ -93,6 +96,7 @@ export default function App() {
   const [workspaceTitle, setWorkspaceTitle] = useState<string | undefined>()
   const canUseTree = view === 'main' && (!!currentWorkspace || ephemeralSandboxDraft)
   const { treeOpen, setTreeOpen, forkOpen, setForkOpen } = useDoubleEscapeTree(canUseTree)
+  useSessionPanelMemory(historySessionFile, historySessionFile || currentSessionId)
 
   useEffect(() => {
     if (ephemeralSandboxDraft) {
@@ -203,7 +207,6 @@ export default function App() {
     }
   }, [pendingExtensionConfig])
 
-  const currentSessionId = useUIStore((s) => s.currentSessionId)
   const timelineItemCount = useUIStore((s) => s.timelineItems.length)
   const historyLoading = useUIStore((s) => s.historyLoading)
 

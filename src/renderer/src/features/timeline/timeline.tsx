@@ -43,6 +43,7 @@ import { EmptyState } from '@renderer/components/ui/empty-state'
 import { enrichPlainTextWithPaths } from './markdown-inline-paths'
 import { AttachmentChip } from '@renderer/features/composer/attachment-chip'
 import { type AttachmentMeta, type Segment } from '@renderer/features/composer/attachments'
+import { getSessionUIState, setSessionTimelineState } from '@renderer/lib/session-ui-state'
 
 const MarkdownView = lazy(() => import('./markdown-view'))
 
@@ -333,6 +334,7 @@ export function Timeline() {
   const historyTotalCount = useUIStore((s) => s.historyTotalCount)
   const historyLoadedCount = useUIStore((s) => s.historyLoadedCount)
   const historySessionFile = useUIStore((s) => s.historySessionFile)
+  const currentSessionId = useUIStore((s) => s.currentSessionId)
   const historyLoading = useUIStore((s) => s.historyLoading)
   const activeRunId = useUIStore((s) => s.runState.activeRunId)
   const timelineMaxAutoExpandedTools = useUIStore((s) => s.timelineMaxAutoExpandedTools)
@@ -357,7 +359,7 @@ export function Timeline() {
       agentRunning,
     },
   )
-  useTimelineBottomAnchorController(scrollRef, followLiveRef, historySessionFile)
+  useTimelineBottomAnchorController(scrollRef, followLiveRef)
 
   useEffect(() => {
     const el = scrollRef.current
@@ -457,18 +459,28 @@ export function Timeline() {
     el.scrollTop = el.scrollHeight - previousScrollHeight
   }, [renderCount, items.length])
 
-  // Reset the virtualization window only when the session file changes — not when
-  // older messages are prepended (that changes items[0].id and must not reset).
-  useEffect(() => {
-    setRenderCount(PAGE)
+  useLayoutEffect(() => {
+    const remembered = getSessionUIState(historySessionFile)?.timeline
+    setRenderCount(remembered?.renderCount ?? PAGE)
     scrollHeightBeforeLoadRef.current = null
     setFetchingOlder(false)
-    followLiveRef.current = true
+    followLiveRef.current = remembered?.followBottom ?? true
     requestAnimationFrame(() => {
       const el = scrollRef.current
-      if (el) scheduleTimelineScrollToBottom(el)
+      if (!el) return
+      if (followLiveRef.current) scheduleTimelineScrollToBottom(el)
+      else el.scrollTop = remembered?.scrollTop ?? 0
     })
-  }, [historySessionFile, followLiveRef])
+    return () => {
+      const el = scrollRef.current
+      if (!el) return
+      setSessionTimelineState(historySessionFile, {
+        scrollTop: el.scrollTop,
+        followBottom: followLiveRef.current,
+        renderCount: renderCountRef.current,
+      })
+    }
+  }, [historySessionFile, historySessionFile || currentSessionId, followLiveRef])
 
   const handleScroll = useCallback(() => {
     const el = scrollRef.current
