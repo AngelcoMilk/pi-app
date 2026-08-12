@@ -9,6 +9,7 @@ import {
 } from '@shared/timeline-settings'
 import { normalizeSessionFileKey } from '@renderer/lib/session-file-key'
 import type { UIState } from '@renderer/stores/ui-store-types'
+import { setSessionActivePanel } from '@renderer/lib/session-ui-state'
 
 type StoreSet = (
   patch: Partial<UIState> | ((state: UIState) => Partial<UIState> | UIState),
@@ -46,16 +47,18 @@ export function createShellSlice(set: StoreSet, get: StoreGet): ShellSlice {
     activePanel: 'review',
     rightPanelCatalog: [...CORE_RIGHT_PANEL_CATALOG],
     setActivePanel: (panel) =>
-      set((state) => ({
-        activePanel: state.rightPanelPrefs[panel]
+      set((state) => {
+        const activePanel = state.rightPanelPrefs[panel]
           ? panel
           : coerceActivePanel(
               panel,
               state.rightPanelPrefs,
               state.rightPanelCatalog,
               state.rightPanelOrder,
-            ),
-      })),
+            )
+        setSessionActivePanel(state.historySessionFile, activePanel)
+        return { activePanel }
+      }),
     rightPanelPrefs: defaultCoreRightPanelPrefs(),
     rightPanelOrder: [],
     applyRightPanelRuntime: (catalog, prefs, order) =>

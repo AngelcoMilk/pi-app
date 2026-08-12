@@ -13,6 +13,7 @@ import {
 } from './context-menu-shared'
 import { RenamePromptDialog } from './rename-prompt-dialog'
 import type { SessionMenuTarget } from './session-context-menu-types'
+import { clearSessionUIState } from '@renderer/lib/session-ui-state'
 
 export type { SessionMenuTarget } from './session-context-menu-types'
 
@@ -77,6 +78,7 @@ export function SessionContextMenuPortal({
         workspaceId: target.workspacePath,
       })
       if (r?.ok) {
+        clearSessionUIState(target.sessionFile)
         const cur = useUIStore.getState().currentSessionId
         if (cur === target.sessionId) {
           useUIStore.getState().setCurrentSession('')
