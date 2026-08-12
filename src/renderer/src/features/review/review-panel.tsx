@@ -2,11 +2,8 @@ import { useState, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@renderer/lib/utils'
 import { useUIStore } from '@renderer/stores/ui-store'
-import { ipcClient, onGitWorkspaceChanged } from '@renderer/lib/ipc-client'
 import { parseGitDiff } from '@shared/diff-model'
 import {
-  Copy,
-  Check,
   GitBranch,
   Loader2,
   FileDiff,
@@ -14,17 +11,10 @@ import {
   Columns2,
   Rows2,
 } from '@renderer/components/icons'
-import { parseGitStatus } from './review-git-utils'
-import { ChangeIcon, FileDiffView, ReviewCommitBar, type DiffMode } from './review-diff-views'
-
-type AnyFileEntry = {
-  path: string
-  changeType: string
-  staged?: boolean
-  source?: string
-  runId?: string
-  turnId?: string
-}
+import { ReviewCommitBar, type DiffMode } from './review-diff-views'
+import { ReviewGitFileList } from './review-git-file-list'
+import { ReviewMetaFileList, type ReviewFileEntry } from './review-meta-file-list'
+import { useReviewGitData } from './use-review-git-data'
 
 const SCOPES = ['turn', 'session', 'git'] as const
 type Scope = (typeof SCOPES)[number]
@@ -37,22 +27,15 @@ export function ReviewPanel() {
   const activeRunId = useUIStore((s) => s.runState.activeRunId)
   const lastRunId = useUIStore((s) => s.runState.lastRunId)
   const running = useUIStore((s) => s.runState.status === 'running')
-  const [copiedPath, setCopiedPath] = useState<string | null>(null)
-  const [gitData, setGitData] = useState<{
-    files: { path: string; changeType: string }[]
-    raw: string
-    branch?: string
-    log?: string
-    error?: string
-    isRepo?: boolean
-    message?: string
-  } | null>(null)
-  const [loading, setLoading] = useState(false)
   const [expandedGitPath, setExpandedGitPath] = useState<string | null>(null)
   const [focusGitPath, setFocusGitPath] = useState<string | null>(null)
   const [expandedMetaPath, setExpandedMetaPath] = useState<string | null>(null)
   const [diffMode, setDiffMode] = useState<DiffMode>('inline')
-  const [gitReloadKey, setGitReloadKey] = useState(0)
+  const { gitData, loading, refreshing, refresh: loadGit } = useReviewGitData({
+    enabled: scope === 'git',
+    workspace,
+    worktreeChangeSignal: fileChanges,
+  })
 
   const turnRunId = running ? activeRunId : lastRunId
 
@@ -90,48 +73,13 @@ export function ReviewPanel() {
     return () => window.removeEventListener('pi-desktop:review-focus-file', onFocus)
   }, [])
 
-  const loadGit = () => {
-    if (!workspace) return
-    setLoading(true)
-    setGitReloadKey((k) => k + 1)
-    ipcClient
-      .invoke('review.getDiff', { sessionId: '', scope: 'git' })
-      .then((res) => {
-        if (res?.diff) {
-          const isRepo = res.diff.isRepo !== false
-          setGitData({
-            files: parseGitStatus(res.diff.status || ''),
-            raw: res.diff.raw || '',
-            branch: res.diff.branch,
-            log: res.diff.log,
-            isRepo,
-            message: res.diff.message,
-            error: isRepo ? res.diff.error : undefined,
-          })
-        }
-      })
-      .catch(() => setGitData(null))
-      .finally(() => setLoading(false))
-  }
-
-  useEffect(() => {
-    if (scope === 'git' && workspace) loadGit()
-  }, [scope, workspace])
-
-  useEffect(() => {
-    return onGitWorkspaceChanged((payload) => {
-      if (!workspace || payload.cwd.replace(/\\/g, '/') !== workspace.replace(/\\/g, '/')) return
-      if (scope === 'git') loadGit()
-    })
-  }, [scope, workspace])
-
   const turnFiles = useMemo(
     () => fileChanges.filter((f) => turnRunId && f.runId === turnRunId),
     [fileChanges, turnRunId],
   )
 
-  const files: AnyFileEntry[] =
-    scope === 'git' ? (gitData?.files as AnyFileEntry[]) || [] : scope === 'turn' ? turnFiles : fileChanges
+  const files: ReviewFileEntry[] =
+    scope === 'git' ? gitData?.files || [] : scope === 'turn' ? turnFiles : fileChanges
 
   const diffFiles = useMemo(() => {
     if (scope !== 'git' || !gitData?.raw) return []
@@ -139,12 +87,6 @@ export function ReviewPanel() {
   }, [scope, gitData?.raw])
 
   const cwd = workspace || ''
-
-  const handleCopy = (path: string) => {
-    navigator.clipboard.writeText(path)
-    setCopiedPath(path)
-    setTimeout(() => setCopiedPath(null), 1500)
-  }
 
   const scopeHint =
     scope === 'turn'
@@ -191,7 +133,7 @@ export function ReviewPanel() {
           )}
           {scope === 'git' && (
             <button type="button" onClick={loadGit} className="chrome-icon-btn rounded p-1" title={t('review:refresh')}>
-              <RefreshCw className={cn('h-3 w-3', loading && 'animate-spin')} />
+              <RefreshCw className={cn('h-3 w-3', (loading || refreshing) && 'animate-spin')} />
             </button>
           )}
         </div>
@@ -228,62 +170,21 @@ export function ReviewPanel() {
             <span className="text-[11px] text-muted-foreground/40">{t('review:empty')}</span>
           </div>
         ) : scope === 'git' ? (
-          <div className="py-1">
-            {files.map((fc) => {
-              const file = diffFiles.find((d) => d.path === fc.path || fc.path.endsWith(d.path))
-              return (
-                <FileDiffView
-                  key={`${fc.path}-${gitReloadKey}`}
-                  file={file}
-                  fallbackPath={fc.path}
-                  fallbackChangeType={fc.changeType}
-                  staged={fc.staged ?? false}
-                  mode={diffMode}
-                  cwd={cwd}
-                  defaultOpen={(() => {
-                    const n = (p: string) => p.replace(/\\/g, '/')
-                    const fp = focusGitPath ? n(focusGitPath) : null
-                    const cp = n(fc.path)
-                    return expandedGitPath === fc.path || (fp != null && (cp === fp || cp.endsWith(`/${fp}`)))
-                  })()}
-                />
-              )
-            })}
-          </div>
+          <ReviewGitFileList
+            files={files}
+            diffFiles={diffFiles}
+            mode={diffMode}
+            cwd={cwd}
+            expandedPath={expandedGitPath}
+            focusPath={focusGitPath}
+          />
         ) : (
-          <div className="py-1.5">
-            {files.map((fc) => {
-              const open =
-                expandedMetaPath === fc.path ||
-                (!!focusGitPath &&
-                  (fc.path.replace(/\\/g, '/') === focusGitPath ||
-                    fc.path.replace(/\\/g, '/').endsWith(`/${focusGitPath}`)))
-              return (
-                <div key={`${fc.path}-${fc.runId || ''}`} className="group">
-                  <div className="flex items-center gap-2 px-3 py-1.5 hover:bg-[var(--bg-hover)]">
-                    <ChangeIcon type={fc.changeType} />
-                    <button
-                      type="button"
-                      className="min-w-0 flex-1 truncate text-left font-mono text-[11px]"
-                      onClick={() => setExpandedMetaPath(open ? null : fc.path)}
-                    >
-                      {fc.path}
-                    </button>
-                    <span className="text-[9px] text-foreground-secondary/50">{fc.source}</span>
-                    <button type="button" onClick={() => handleCopy(fc.path)} className="opacity-0 group-hover:opacity-100">
-                      {copiedPath === fc.path ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
-                    </button>
-                  </div>
-                  {open && (
-                    <div className="border-t border-border/20 bg-[var(--bg-2)]/50 px-3 py-2 text-[10px] text-foreground-secondary">
-                      {fc.changeType} · {fc.source}
-                      {fc.runId && <span className="ml-2 font-mono">run {fc.runId.slice(0, 8)}</span>}
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
+          <ReviewMetaFileList
+            files={files}
+            expandedPath={expandedMetaPath}
+            focusPath={focusGitPath}
+            onExpandedPathChange={setExpandedMetaPath}
+          />
         )}
       </div>
       {scope === 'git' && gitData?.isRepo !== false && files.length > 0 && (

@@ -1,7 +1,7 @@
 export function parseGitStatus(status: string): { path: string; changeType: string; staged: boolean }[] {
   if (!status) return []
   const out: { path: string; changeType: string; staged: boolean }[] = []
-  for (const line of status.trim().split('\n').filter(Boolean)) {
+  for (const line of status.split(/\r?\n/).filter((entry) => entry.length > 0)) {
     if (line.startsWith('##')) continue
     if (line.length < 4) continue
     const code = line.substring(0, 2)

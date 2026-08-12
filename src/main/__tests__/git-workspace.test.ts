@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process'
-import { mkdtempSync, writeFileSync, rmSync, readFileSync } from 'node:fs'
+import { mkdtempSync, writeFileSync, rmSync, readFileSync, statSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -10,7 +10,13 @@ vi.mock('../config-store', () => ({
   },
 }))
 
-import { runGit, commitChanges, stageHunks, unstageHunks, readGitWorkspaceSnapshot } from '../git-workspace'
+import {
+  runGit,
+  commitChanges,
+  stageHunks,
+  unstageHunks,
+  readGitWorkspaceSnapshot,
+} from '../git-workspace'
 
 const tempDirs: string[] = []
 
@@ -85,5 +91,17 @@ describe('git-workspace host mode', () => {
     expect(typeof snap.raw).toBe('string')
     expect(typeof snap.status).toBe('string')
     expect(snap.log).toContain('init')
+  })
+
+  it('readGitWorkspaceSnapshot leaves the repository index untouched', () => {
+    const dir = makeRepo()
+    writeFileSync(join(dir, 'a.txt'), 'changed\n')
+    const indexPath = join(dir, '.git', 'index')
+    const before = statSync(indexPath).mtimeMs
+
+    readGitWorkspaceSnapshot(dir)
+    readGitWorkspaceSnapshot(dir)
+
+    expect(statSync(indexPath).mtimeMs).toBe(before)
   })
 })

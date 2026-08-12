@@ -74,6 +74,15 @@ export function runGit(
   return { ok: true, stdout: r.stdout ?? '' }
 }
 
+/** Snapshot reads must not refresh the index and feed back into the .git watcher. */
+export function runGitReadOnly(
+  cwd: string,
+  args: string[],
+  options?: { timeout?: number; maxBuffer?: number },
+): ReturnType<typeof runGit> {
+  return runGit(cwd, ['--no-optional-locks', ...args], options)
+}
+
 export type GitWorkspaceSnapshot = {
   isRepo: boolean
   branch: string
@@ -95,16 +104,16 @@ export function readGitWorkspaceSnapshot(cwd: string): GitWorkspaceSnapshot {
     }
   }
 
-  const branchR = runGit(cwd, ['rev-parse', '--abbrev-ref', 'HEAD'], { timeout: 3000 })
+  const branchR = runGitReadOnly(cwd, ['rev-parse', '--abbrev-ref', 'HEAD'], { timeout: 3000 })
   const branch = branchR.ok ? branchR.stdout.trim() : ''
 
-  const diffR = runGit(cwd, ['diff'], { timeout: 10000 })
+  const diffR = runGitReadOnly(cwd, ['diff'], { timeout: 10000 })
   const raw = diffR.ok ? diffR.stdout : ''
 
-  const statusR = runGit(cwd, ['status', '--porcelain', '-b'], { timeout: 5000 })
+  const statusR = runGitReadOnly(cwd, ['status', '--porcelain', '-b'], { timeout: 5000 })
   const status = statusR.ok ? statusR.stdout : ''
 
-  const logR = runGit(cwd, ['log', '--oneline', '-12'], { timeout: 5000 })
+  const logR = runGitReadOnly(cwd, ['log', '--oneline', '-12'], { timeout: 5000 })
   const log = logR.ok ? logR.stdout.trim() : ''
 
   if (!diffR.ok && diffR.notRepo) {
