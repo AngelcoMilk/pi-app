@@ -46,11 +46,16 @@ function makeFakeTransport(): WorkerTransport & { emitMessage: (m: WorkerRespons
 }
 
 function fakeSlot(poolKey: string, cwd: string, active: boolean, lastFg = Date.now()): WorkerSlot {
+  const sessionFile = poolKey.startsWith('ws:') ? null : poolKey
   return {
     poolKey,
     cwd,
     runtime: { mode: 'host', distro: null },
-    sessionFile: poolKey.startsWith('ws:') ? null : poolKey,
+    sessionFile,
+    targetSessionFile: sessionFile,
+    verifiedSessionFile: sessionFile,
+    bindingTargetSessionFile: null,
+    bindingPromise: null,
     worker: {} as WorkerSlot['worker'],
     pendingRequests: new Map(),
     requestCounter: 0,
@@ -253,8 +258,21 @@ describe('WorkerManager listSessions routing', () => {
 describe('WorkerManager session-worker reuse', () => {
   function boundSlot(poolKey: string, cwd: string): WorkerSlot {
     const transport = makeFakeTransport()
-    transport.postMessage = vi.fn((message: { requestId?: string }) => {
+    transport.postMessage = vi.fn((message: {
+      requestId?: string
+      type?: string
+      sessionFile?: string
+    }) => {
       queueMicrotask(() => {
+        if (message.type === 'loadSession') {
+          transport.emitMessage({
+            type: 'loadSession-done',
+            requestId: message.requestId,
+            sessionFile: message.sessionFile,
+            sessionId: 'bound',
+          } as WorkerResponsePayload)
+          return
+        }
         transport.emitMessage({
           type: 'done',
           requestId: message.requestId,
@@ -324,9 +342,22 @@ describe('session-scoped RPC routing', () => {
     const backgroundSlot = fakeSlot(backgroundKey, '/w', false)
     foregroundSlot.worker = foregroundProcess
     backgroundSlot.worker = backgroundTransport
-    backgroundTransport.postMessage = vi.fn((message: { requestId?: string }) => {
+    backgroundTransport.postMessage = vi.fn((message: {
+      requestId?: string
+      type?: string
+      sessionFile?: string
+    }) => {
       queueMicrotask(() => {
         if (message.requestId) {
+          if (message.type === 'loadSession') {
+            backgroundTransport.emitMessage({
+              type: 'loadSession-done',
+              requestId: message.requestId,
+              sessionFile: message.sessionFile,
+              sessionId: 'background',
+            } as WorkerResponsePayload)
+            return
+          }
           backgroundTransport.emitMessage({
             type: 'queueCleared',
             requestId: message.requestId,

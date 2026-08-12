@@ -47,11 +47,16 @@ function fakeSlot(poolKey: string, active = false): WorkerSlot {
     kill: vi.fn(),
     emitMessage: (message) => onMessage?.(message as never),
   }
+  const sessionFile = poolKey.startsWith('ws:') ? null : poolKey
   return {
     poolKey,
     cwd: '/workspace',
     runtime: { mode: 'host', distro: null },
-    sessionFile: poolKey.startsWith('ws:') ? null : poolKey,
+    sessionFile,
+    targetSessionFile: sessionFile,
+    verifiedSessionFile: sessionFile,
+    bindingTargetSessionFile: null,
+    bindingPromise: null,
     worker,
     pendingRequests: new Map(),
     requestCounter: 0,
@@ -99,14 +104,31 @@ describe('WorkerManager session isolation', () => {
     const target = fakeSlot(normalizeSessionKey('/sessions/b.jsonl'))
     const { manager, internals } = managerWithForeground(foreground)
     internals.pool.set(target.poolKey, target)
-    replyFrom(foreground, { type: 'getSessionContextPreview-done', preview: { estimatedChars: 11 } })
-    replyFrom(target, { type: 'getSessionContextPreview-done', preview: { estimatedChars: 22 } })
+    replyFrom(foreground, {
+      type: 'getSessionContextPreview-done',
+      preview: { sessionFile: foreground.poolKey, estimatedChars: 11 },
+    })
+    replyFrom(target, {
+      type: 'getSessionContextPreview-done',
+      preview: { sessionFile: target.poolKey, estimatedChars: 22 },
+    })
 
     const preview = await manager.getSessionContextPreview(target.poolKey)
 
     expect(preview).toEqual(expect.objectContaining({ sessionFile: target.poolKey, estimatedChars: 22 }))
     expect(foreground.worker.postMessage).not.toHaveBeenCalled()
     expect(await manager.getSessionContextPreview('/sessions/missing.jsonl')).toBeNull()
+  })
+
+  it('rejects a context preview attributed to another session', async () => {
+    const target = fakeSlot(normalizeSessionKey('/sessions/b.jsonl'))
+    const { manager } = managerWithForeground(target)
+    replyFrom(target, {
+      type: 'getSessionContextPreview-done',
+      preview: { sessionFile: '/sessions/a.jsonl', estimatedChars: 22 },
+    })
+
+    await expect(manager.getSessionContextPreview(target.poolKey)).resolves.toBeNull()
   })
 
   it('creates a separate worker when the foreground session is running', async () => {

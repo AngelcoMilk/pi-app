@@ -30,6 +30,10 @@ function createSlot(
     cwd,
     runtime,
     sessionFile,
+    targetSessionFile: sessionFile,
+    verifiedSessionFile: null,
+    bindingTargetSessionFile: null,
+    bindingPromise: null,
     worker,
     pendingRequests: new Map(),
     requestCounter: 0,
@@ -74,6 +78,8 @@ export async function remapSessionWorkerSlot(
   if (!source || source.stopping) return sourceKey
   if (sourceKey === targetKey) {
     source.sessionFile = targetKey
+    source.targetSessionFile = targetKey
+    source.verifiedSessionFile = targetKey
     return targetKey
   }
 
@@ -90,6 +96,8 @@ export async function remapSessionWorkerSlot(
   if (pool.get(sourceKey) === source) pool.delete(sourceKey)
   source.poolKey = targetKey
   source.sessionFile = targetKey
+  source.targetSessionFile = targetKey
+  source.verifiedSessionFile = targetKey
   pool.set(targetKey, source)
   return targetKey
 }

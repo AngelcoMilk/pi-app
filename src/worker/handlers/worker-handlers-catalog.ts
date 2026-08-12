@@ -1,4 +1,5 @@
 import { buildSessionContextPreview } from '@shared/session-context-preview'
+import { sessionFilePathsEqual } from '@shared/session-file-path'
 import { errorMessage } from '@shared/error-message'
 import type { WorkerCommandRow, WorkerIncomingMessage } from '../worker-port-types.js'
 import type { WorkerReply } from '../worker-handler-types.js'
@@ -91,11 +92,16 @@ export async function handleGetcommands(msg: WorkerIncomingMessage, reply: Worke
 
 export async function handleGetsessioncontextpreview(msg: WorkerIncomingMessage, reply: WorkerReply): Promise<void> {
         try {
+          const actualSessionFile = st.session?.sessionFile
+          if (!actualSessionFile || !sessionFilePathsEqual(actualSessionFile, msg.sessionFile)) {
+            reply({ type: 'getSessionContextPreview-done', preview: null })
+            return
+          }
           reply({
             type: 'getSessionContextPreview-done',
             preview: buildSessionContextPreview({
               sessionId: st.currentSessionId,
-              sessionFile: st.session?.sessionFile || String(msg.sessionFile || ''),
+              sessionFile: actualSessionFile,
               messages: st.session?.messages,
             }),
           })

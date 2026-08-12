@@ -132,6 +132,7 @@ describe('context.preview session isolation', () => {
     })
 
     expect(mocks.authorizeTrustedSessionFile).toHaveBeenCalledWith('/workspace', sessionFile)
+    expect(mocks.getSessionContextPreview).toHaveBeenCalledWith(sessionFile)
     expect(mocks.getSessionContextPreviewFromDisk).toHaveBeenCalledWith(
       sessionFile,
       'rewound-leaf',

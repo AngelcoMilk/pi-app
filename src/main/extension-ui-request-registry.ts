@@ -19,12 +19,14 @@ export class ExtensionUIRequestRegistry {
     sessionFile: string,
     request: ExtensionUIInteractiveRequest,
   ): ExtensionUIPendingRequest | null {
-    if (!slot.sessionFile || !sessionFilePathsEqual(slot.sessionFile, sessionFile)) return null
+    if (!slot.verifiedSessionFile || !sessionFilePathsEqual(slot.verifiedSessionFile, sessionFile)) {
+      return null
+    }
     const existing = this.entries.get(request.id)
     if (existing && existing.slot !== slot) return null
     if (existing) return existing.pending
 
-    const pending = { ...request, sessionFile: slot.sessionFile, createdAt: Date.now() }
+    const pending = { ...request, sessionFile: slot.verifiedSessionFile, createdAt: Date.now() }
     this.entries.set(request.id, { pending, slot, responding: false })
     slot.pendingExtensionUiCount++
     return pending

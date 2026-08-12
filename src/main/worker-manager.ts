@@ -35,12 +35,14 @@ import {
 import type { WorkerInitResult, WorkerSlot } from './worker-manager-types'
 import { normalizeSessionKey, workspacePoolKey } from './worker-session-key'
 import { isWslWindowsPath } from '@shared/wsl-path'
+import { sessionFilePathsEqual } from '@shared/session-file-path'
 import { getAgentRuntimeConfig, isWslRuntimeActive } from './wsl/runtime-config'
 import { readMaxSessionWorkers } from './worker-pool-config'
 import { configStore } from './config-store'
 import { createNewSessionInPool } from './worker-manager-new-session'
 import { readSessionMetaFromFile } from './session-file-meta'
 import { ExtensionUICoordinator } from './extension-ui-coordinator'
+import { bindWorkerSlotToSession } from './worker-session-binding'
 import {
   applySettledRunToSessionLeafOverride,
   getSessionLeafOverride,
@@ -235,14 +237,14 @@ export class WorkerManager {
 
     const existing = this.pool.get(sk)
     if (existing && !existing.stopping && this.slotMatchesCurrentRuntime(existing)) {
-      existing.sessionFile = sk
       evictIdleWorkers(this.pool, {
         foregroundKey: this.foregroundPoolKey,
         maxWorkers: readMaxSessionWorkers(),
       })
       if (existing.initPromise) await existing.initPromise
-      // Bind live session on worker
-      await this.requestOnSlot(existing, 'loadSession', { sessionFile: sk }).catch(() => null)
+      await bindWorkerSlotToSession(existing, sk, (slot, type, data) =>
+        this.requestOnSlot(slot, type, data),
+      )
       return this.initResultFromSlot(existing)
     }
 
@@ -254,11 +256,12 @@ export class WorkerManager {
       const wasForeground = this.foregroundPoolKey === oldKey
       if (this.pool.get(oldKey) === reusable) this.pool.delete(oldKey)
       reusable.poolKey = sk
-      reusable.sessionFile = sk
       this.pool.set(sk, reusable)
       if (wasForeground) this.foregroundPoolKey = sk
       if (reusable.initPromise) await reusable.initPromise
-      await this.requestOnSlot(reusable, 'loadSession', { sessionFile: sk }).catch(() => null)
+      await bindWorkerSlotToSession(reusable, sk, (slot, type, data) =>
+        this.requestOnSlot(slot, type, data),
+      )
       return this.initResultFromSlot(reusable)
     }
 
@@ -286,7 +289,9 @@ export class WorkerManager {
     })
 
     await init
-    await this.requestOnSlot(slot, 'loadSession', { sessionFile: sk })
+    await bindWorkerSlotToSession(slot, sk, (target, type, data) =>
+      this.requestOnSlot(target, type, data),
+    )
 
     evictIdleWorkers(this.pool, {
       foregroundKey: this.foregroundPoolKey,
@@ -711,15 +716,15 @@ export class WorkerManager {
         // Always stamp the pool identity so renderer cannot mis-attribute streaming.
         return {
           ...state,
-          sessionFile: slot.sessionFile || sk,
+          sessionFile: slot.verifiedSessionFile || sk,
           isStreaming: !!(state as { isStreaming?: boolean }).isStreaming || slot.agentTurnActive,
-          bound: true,
+          bound: sessionFilePathsEqual(slot.verifiedSessionFile, sk),
         }
       } catch {
         return {
-          sessionFile: slot.sessionFile || sk,
+          sessionFile: slot.verifiedSessionFile || sk,
           isStreaming: slot.agentTurnActive,
-          bound: true,
+          bound: sessionFilePathsEqual(slot.verifiedSessionFile, sk),
         } as WorkerState
       }
     }
@@ -734,10 +739,20 @@ export class WorkerManager {
     if (!sk) return null
     const slot = this.pool.get(sk)
     if (!slot || slot.stopping) return null
+    if (slot.bindingPromise) await slot.bindingPromise.catch(() => {})
+    if (!sessionFilePathsEqual(slot.verifiedSessionFile, sk)) {
+      try {
+        await bindWorkerSlotToSession(slot, sk, (target, type, data) =>
+          this.requestOnSlot(target, type, data),
+        )
+      } catch {
+        return null
+      }
+    }
     const r = await this.requestOnSlot(slot, 'getSessionContextPreview', { sessionFile: sk })
     const preview = (r.preview as WorkerContextPreview) || null
-    if (!preview) return null
-    return { ...preview, sessionFile: slot.sessionFile || sk }
+    if (!preview || !sessionFilePathsEqual(preview.sessionFile, sk)) return null
+    return preview
   }
   async getSkillsList(): Promise<WorkerSkillInfo[]> {
     const r = await this.request('getSkillsList')
@@ -812,14 +827,18 @@ export class WorkerManager {
     // Re-apply rewound leaf tip (main override map) so agent context matches UI.
     let leafId = opts?.leafId
     if (leafId === undefined) leafId = getSessionLeafOverride(sessionFile)
-    const r = await this.request('loadSession', {
-      sessionFile,
-      force: opts?.force === true,
-      ...(leafId !== undefined ? { leafId } : {}),
-    })
     const sk = normalizeSessionKey(sessionFile)
     const slot = this.pool.get(sk)
-    if (slot) slot.sessionFile = sk
+    if (!slot) throw new Error('Worker not started for session')
+    const r = await bindWorkerSlotToSession(
+      slot,
+      sk,
+      (target, type, data) => this.requestOnSlot(target, type, data),
+      {
+        force: opts?.force === true,
+        ...(leafId !== undefined ? { leafId } : {}),
+      },
+    )
     return {
       sessionId: String(r.sessionId ?? ''),
       model: r.model as string | undefined,

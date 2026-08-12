@@ -8,6 +8,10 @@ function fakeSlot(sessionFile: string): WorkerSlot {
     cwd: '/workspace',
     runtime: { mode: 'host', distro: null },
     sessionFile,
+    targetSessionFile: sessionFile,
+    verifiedSessionFile: sessionFile,
+    bindingTargetSessionFile: null,
+    bindingPromise: null,
     worker: {
       kind: 'utilityProcess',
       postMessage: vi.fn(),

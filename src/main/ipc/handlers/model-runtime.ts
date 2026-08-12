@@ -123,13 +123,11 @@ export function registerModelRuntimeHandlers(): void {
     const authorized = authorizeTrustedSessionFile(workspaceId, sessionFile)
     if (!authorized.ok) return { preview: null }
 
-    if (workerManager.isRunning) {
-      try {
-        const preview = await workerManager.getSessionContextPreview(authorized.sessionFile)
-        if (preview) return { preview }
-      } catch (e) {
-        console.warn('[IPC] live context.preview failed, using disk:', e)
-      }
+    try {
+      const preview = await workerManager.getSessionContextPreview(authorized.sessionFile)
+      if (preview) return { preview }
+    } catch (e) {
+      console.warn('[IPC] live context.preview failed, using disk:', e)
     }
     if (isWslRuntimeActive()) return { preview: null }
 

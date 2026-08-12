@@ -136,6 +136,7 @@ export async function handleLoadsession(msg: WorkerIncomingMessage, reply: Worke
             const modelStr = currentSessionModelKey()
             reply({
               type: 'loadSession-done',
+              sessionFile: st.session.sessionFile,
               sessionId: st.currentSessionId,
               model: modelStr,
               thinkingLevel: st.session.thinkingLevel,
@@ -164,6 +165,7 @@ export async function handleLoadsession(msg: WorkerIncomingMessage, reply: Worke
           const modelStr = currentSessionModelKey()
           reply({
             type: 'loadSession-done',
+            sessionFile: st.session?.sessionFile,
             sessionId: st.currentSessionId,
             model: modelStr,
             thinkingLevel: st.session?.thinkingLevel,

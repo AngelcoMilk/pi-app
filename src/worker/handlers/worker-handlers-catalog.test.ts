@@ -59,6 +59,29 @@ describe('worker model catalog handlers', () => {
 })
 
 describe('worker context preview handler', () => {
+  it('returns no preview before a worker session is bound', async () => {
+    const reply = vi.fn()
+
+    await handleGetsessioncontextpreview({ sessionFile: '/sessions/a.jsonl' }, reply)
+
+    expect(reply).toHaveBeenCalledWith({
+      type: 'getSessionContextPreview-done',
+      preview: null,
+    })
+  })
+
+  it('returns no preview when the requested session does not match the worker binding', async () => {
+    st.session = { sessionFile: '/sessions/a.jsonl', messages: [] } as never
+    const reply = vi.fn()
+
+    await handleGetsessioncontextpreview({ sessionFile: '/sessions/b.jsonl' }, reply)
+
+    expect(reply).toHaveBeenCalledWith({
+      type: 'getSessionContextPreview-done',
+      preview: null,
+    })
+  })
+
   it('uses the persisted-message metric even when the live session has a system prompt', async () => {
     st.currentSessionId = 'session-a'
     st.session = {

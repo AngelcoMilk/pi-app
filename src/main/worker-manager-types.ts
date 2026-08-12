@@ -16,6 +16,12 @@ export type WorkerSlot = {
   runtime: { mode: 'host' | 'wsl'; distro: string | null }
   /** Bound session file when known; null for workspace-only slots */
   sessionFile: string | null
+  /** Session identity requested by Main, not proof that Worker completed the bind. */
+  targetSessionFile: string | null
+  /** Session identity acknowledged by the Worker after loadSession. */
+  verifiedSessionFile: string | null
+  bindingTargetSessionFile: string | null
+  bindingPromise: Promise<void> | null
   worker: WorkerTransport
   pendingRequests: Map<
     string,
